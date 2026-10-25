@@ -1,0 +1,36 @@
+{
+  "_explicacion": "Extensiones de navegador maliciosas confirmadas por empresas de seguridad. Se puede ampliar añadiendo entradas con su fuente.",
+  "extensiones": {
+    "fnmihdojmnkclgjpcoonokmkhjpjechg": {
+      "nombre": "Chat GPT for Chrome with GPT-5, Claude Sonnet & DeepSeek AI",
+      "motivo": "Robaba las conversaciones con ChatGPT y DeepSeek y las URL de todas las pestañas cada 30 minutos (unos 600.000 usuarios).",
+      "fuente": "OX Security, enero de 2026 · https://thehackernews.com/2026/01/two-chrome-extensions-caught-stealing.html"
+    },
+    "inhcgfpbfdjbjogdfjbclgolkmhnooop": {
+      "nombre": "AI Sidebar with Deepseek, ChatGPT, Claude, and more.",
+      "motivo": "Misma campaña: copiaba los chats con la IA y los mandaba a chatsaigpt.com y deepaichats.com (unos 300.000 usuarios).",
+      "fuente": "OX Security, enero de 2026 · https://thehackernews.com/2026/01/two-chrome-extensions-caught-stealing.html"
+    },
+    "eppiocemhmnlbhjplcgkofciiegomcon": {
+      "nombre": "Urban VPN Proxy (Chrome)",
+      "motivo": "Se vendía como protección de privacidad, pero recogía todo lo que el usuario escribía en ChatGPT, Claude, Gemini y otras IA (unos 6 millones de usuarios).",
+      "fuente": "Koi Security, diciembre de 2025 · https://thehackernews.com/2025/12/featured-chrome-browser-extension.html"
+    },
+    "nimlmejbmnecnaghgmbahmbaddhjbecg": {
+      "nombre": "Urban VPN Proxy (Edge)",
+      "motivo": "La misma extensión en la tienda de Microsoft Edge (1,3 millones de instalaciones).",
+      "fuente": "Koi Security, diciembre de 2025 · https://thehackernews.com/2025/12/featured-chrome-browser-extension.html"
+    }
+  },
+  "dominios": {
+    "chatsaigpt.com": "Recibía los chats robados por las extensiones falsas de IA (OX Security, 2026).",
+    "deepaichats.com": "Recibía los chats robados por las extensiones falsas de IA (OX Security, 2026).",
+    "giftshop.club": "Recibía en copia oculta los correos robados por el conector falso postmark-mcp (Koi Security, 2025)."
+  },
+  "paquetes_mcp": {
+    "postmark-mcp": {
+      "motivo": "Paquete de npm que suplantaba al conector oficial de Postmark. Desde la versión 1.0.16 mandaba en copia oculta (BCC) cada correo enviado a phan@giftshop.club. Fue el primer conector MCP malicioso encontrado en el mundo real.",
+      "fuente": "Koi Security, septiembre de 2025 · https://thehackernews.com/2025/09/first-malicious-mcp-server-found.html"
+    }
+  }
+}

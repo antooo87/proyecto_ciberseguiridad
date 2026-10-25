@@ -1,0 +1,35 @@
+{"texto": "Buenas, necesito que me ayudes con la declaración de la renta. Mi dni es 37759458j.", "entidades": [{"tipo": "DNI", "valor": "37759458j"}], "id": 1}
+{"texto": "Llámame mañana al (+34) 655 21 98 03 o al fijo 912 345 678, que hoy no puedo.", "entidades": [{"tipo": "TELEFONO", "valor": "655 21 98 03"}, {"tipo": "TELEFONO", "valor": "912 345 678"}], "id": 2}
+{"texto": "Le escribo como representante de Iván Torres Gil para reclamar el depósito.", "entidades": [{"tipo": "PERSONA", "valor": "Iván Torres Gil"}], "id": 3}
+{"texto": "Mi correo del trabajo es J.MARTIN@CONSULTORA-NORTE.COM, mándalo ahí.", "entidades": [{"tipo": "EMAIL", "valor": "J.MARTIN@CONSULTORA-NORTE.COM"}], "id": 4}
+{"texto": "Transferencia a es95 4021 7617 6667 5985 8980, concepto alquiler noviembre.", "entidades": [{"tipo": "IBAN", "valor": "es95 4021 7617 6667 5985 8980"}], "id": 5}
+{"texto": "Pago con 4291.1929.7434.7085, caducidad 09/28 y CVV 412.", "entidades": [{"tipo": "TARJETA", "valor": "4291.1929.7434.7085"}], "id": 6}
+{"texto": "La api está en http://83.44.12.9:8080/v1 y la de pruebas en 10.0.0.12.", "entidades": [{"tipo": "IP", "valor": "83.44.12.9"}, {"tipo": "IP", "valor": "10.0.0.12"}], "id": 7}
+{"texto": "La contraseña del wifi de casa es Casa_Lopez_2024 por si la necesitas.", "entidades": [{"tipo": "CONTRASENA", "valor": "Casa_Lopez_2024"}], "id": 8}
+{"texto": "Este es mi .env:\nOPENAI_API_KEY=\"sk-proj-Zx81kLmQ2vNpR7tYwE4uI9oA3sDfGhJk5LqWe0RtY\"\nDEBUG=true", "entidades": [{"tipo": "CLAVE_API", "valor": "sk-proj-Zx81kLmQ2vNpR7tYwE4uI9oA3sDfGhJk5LqWe0RtY"}], "id": 9}
+{"texto": "Soy extranjera, mi número de identidad es Z-9616271-E y no me deja registrarme.", "entidades": [{"tipo": "NIE", "valor": "Z-9616271-E"}], "id": 10}
+{"texto": "El coche aparcado en doble fila tiene matrícula 4821 LMN, ¿a quién llamo?", "entidades": [{"tipo": "MATRICULA", "valor": "4821 LMN"}], "id": 11}
+{"texto": "Envía el paquete a Rúa do Vilar 14, 2º izq., 15705 Santiago de Compostela, a nombre de Xoán Rivas.", "entidades": [{"tipo": "DIRECCION", "valor": "Rúa do Vilar 14, 2º izq., 15705 Santiago de Compostela"}, {"tipo": "PERSONA", "valor": "Xoán Rivas"}], "id": 12}
+{"texto": "Nº de cuenta: ES6505498624760475872251 (titular: Beatriz Cano).", "entidades": [{"tipo": "IBAN", "valor": "ES6505498624760475872251"}, {"tipo": "PERSONA", "valor": "Beatriz Cano"}], "id": 13}
+{"texto": "usuario: pgarcia / pass: Tr0ub4dor&3, entra y revisa los permisos.", "entidades": [{"tipo": "CONTRASENA", "valor": "Tr0ub4dor&3"}], "id": 14}
+{"texto": "El token de GitHub que uso es ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8 y ha caducado.", "entidades": [{"tipo": "CLAVE_API", "valor": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"}], "id": 15}
+{"texto": "Mis dos DNI de la familia: el mío 79869411-W y el de mi hijo 15109549 K.", "entidades": [{"tipo": "DNI", "valor": "79869411-W"}, {"tipo": "DNI", "valor": "15109549 K"}], "id": 16}
+{"texto": "Whatsapp: 0034 699 123 456. Pregunta por Rocío.", "entidades": [{"tipo": "TELEFONO", "valor": "0034 699 123 456"}, {"tipo": "PERSONA", "valor": "Rocío"}], "id": 17}
+{"texto": "Amex terminada en 5044, número completo 3482 768617 75044.", "entidades": [{"tipo": "TARJETA", "valor": "3482 768617 75044"}], "id": 18}
+{"texto": "Revisa la factura del cliente con NIF 13482690K, la dirección fiscal es Avenida Diagonal 640, 08017 Barcelona.", "entidades": [{"tipo": "DNI", "valor": "13482690K"}, {"tipo": "DIRECCION", "valor": "Avenida Diagonal 640, 08017 Barcelona"}], "id": 19}
+{"texto": "¿Puedes resumirme este hilo? Lo empezó Fernando Ortega y respondió la Dra. Silvia Navarro.", "entidades": [{"tipo": "PERSONA", "valor": "Fernando Ortega"}, {"tipo": "PERSONA", "valor": "Silvia Navarro"}], "id": 20}
+{"texto": "Mi PIN del móvil es 0731, apúntalo en un sitio seguro.", "entidades": [{"tipo": "CONTRASENA", "valor": "0731"}], "id": 21}
+{"texto": "Ponme en la firma: Laura Benítez · laura.benitez@ayto-leganes.es · 675 300 112", "entidades": [{"tipo": "PERSONA", "valor": "Laura Benítez"}, {"tipo": "EMAIL", "valor": "laura.benitez@ayto-leganes.es"}, {"tipo": "TELEFONO", "valor": "675 300 112"}], "id": 22}
+{"texto": "Clave de Google Maps: AIzaSyD4fK2pQ9mN7vB3xL8wR1tY6uE0iO5aS2d para el mapa de la web.", "entidades": [{"tipo": "CLAVE_API", "valor": "AIzaSyD4fK2pQ9mN7vB3xL8wR1tY6uE0iO5aS2d"}], "id": 23}
+{"texto": "Tarjeta 5539 6304 6476 4631 bloqueada, el banco dice que llame al 900 100 200.", "entidades": [{"tipo": "TARJETA", "valor": "5539 6304 6476 4631"}, {"tipo": "TELEFONO", "valor": "900 100 200"}], "id": 24}
+{"texto": "Mi documento es 92981884Z y el de mi pareja X8900794R.", "entidades": [{"tipo": "DNI", "valor": "92981884Z"}, {"tipo": "NIE", "valor": "X8900794R"}], "id": 25}
+{"texto": "¿Cuál es la diferencia entre TCP y UDP? Explícalo con un ejemplo.", "entidades": [], "id": 26}
+{"texto": "El examen es el 12/01/2027 a las 9:00 en el aula 1.05 del edificio 3.", "entidades": [], "id": 27}
+{"texto": "Tengo 3 entradas para el concierto, fila 12, asientos 14, 15 y 16.", "entidades": [], "id": 28}
+{"texto": "El ticket nº 2026110045 tiene un importe de 45,90 € con IVA.", "entidades": [], "id": 29}
+{"texto": "Instala la versión 2.4.1 del paquete y reinicia el servidor.", "entidades": [], "id": 30}
+{"texto": "La clave del éxito es la constancia.", "entidades": [], "id": 31}
+{"texto": "Mi contraseña tiene que cambiar cada 90 días según la política.", "entidades": [], "id": 32}
+{"texto": "El vuelo IB3166 sale a las 7:45 desde la terminal 4.", "entidades": [], "id": 33}
+{"texto": "La temperatura subió a 38,5 grados el 14 de agosto.", "entidades": [], "id": 34}
+{"texto": "En la tabla hay 1.234.567 filas y tarda 12 segundos en cargar.", "entidades": [], "id": 35}

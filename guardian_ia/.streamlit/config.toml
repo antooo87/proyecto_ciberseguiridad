@@ -1,0 +1,10 @@
+# Solo accesible desde este PC y sin enviar estadísticas de uso a nadie
+[server]
+address = "127.0.0.1"
+headless = false
+
+[browser]
+gatherUsageStats = false
+
+[client]
+toolbarMode = "viewer"

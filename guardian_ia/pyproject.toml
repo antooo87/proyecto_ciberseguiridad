@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "guardian-ia"
+version = "0.3.0"
+description = "Programa local que se pone entre tú y la IA: tapa tus datos, frena la prompt injection, revisa las respuestas y la IA instalada en el PC."
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Antonio De Mateo Bodegas" }]
+requires-python = ">=3.11"
+dependencies = ["ollama>=0.6", "httpx>=0.27", "pdfminer.six>=20231228"]
+keywords = ["seguridad", "ia", "llm", "privacidad", "prompt-injection", "ollama", "mcp", "rgpd"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Topic :: Security",
+    "Natural Language :: Spanish",
+]
+
+[project.optional-dependencies]
+web = ["streamlit>=1.40"]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[project.scripts]
+guardian = "guardian.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["guardian*"]
+
+[tool.setuptools.package-data]
+"guardian.revisor" = ["lista_negra.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 135
+target-version = "py311"
+extend-exclude = ["evaluacion/publicos"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# Los generadores de datos de prueba tienen frases largas a propósito
+"evaluacion/*.py" = ["E501", "E731"]

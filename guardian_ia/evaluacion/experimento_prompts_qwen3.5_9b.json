@@ -1,0 +1,65 @@
+{
+  "modelo": "qwen3.5:9b",
+  "textos": 32,
+  "resultados": {
+    "A. Lista única {tipo, texto} (v0.2)": {
+      "tp": 22,
+      "fp": 11,
+      "fn": 7,
+      "precision": 0.6666666666666666,
+      "recall": 0.7586206896551724,
+      "f1": 0.7096774193548386,
+      "errores_json": 0,
+      "segundos_medios": 18.834409604281205,
+      "fallos": [
+        "sobra CONTRASENA: +34 745 14 35 11",
+        "no vio PERSONA: Daniel González Muñoz",
+        "no vio PERSONA: Laura Jiménez",
+        "no vio PERSONA: David Álvarez",
+        "sobra CONTRASENA: 4584-6450-6045-4145",
+        "sobra CONTRASENA: 5146854242764128",
+        "sobra DIRECCION: hugo.diaz@gmail.com",
+        "sobra DIRECCION: +34 601331560",
+        "no vio PERSONA: Hugo Fernández Martín",
+        "no vio PERSONA: María González Rodríguez",
+        "sobra PERSONA: 39986987 S",
+        "sobra CONTRASENA: 761059148",
+        "sobra DIRECCION: ana.martin34@yahoo.es",
+        "sobra DIRECCION: daniel_diaz@outlook.com",
+        "no vio PERSONA: Antonio Martínez",
+        "no vio PERSONA: Paula Romero Ruiz",
+        "sobra CONTRASENA: AKIAUD1ZOVGZ507JU3MQ",
+        "sobra CONTRASENA: AIzaO2DnIyUJZoh5SW4o-sJXZLjvsbxIRqQcuV7"
+      ]
+    },
+    "B. Una lista por tipo": {
+      "tp": 29,
+      "fp": 3,
+      "fn": 0,
+      "precision": 0.90625,
+      "recall": 1.0,
+      "f1": 0.9508196721311475,
+      "errores_json": 0,
+      "segundos_medios": 17.37873217559374,
+      "fallos": [
+        "sobra CONTRASENA: ES79 8376 8917 7603 4236 5966",
+        "sobra CONTRASENA: AKIAUD1ZOVGZ507JU3MQ",
+        "sobra CONTRASENA: AIzaO2DnIyUJZoh5SW4o-sJXZLjvsbxIRqQcuV7"
+      ]
+    },
+    "D. Una lista por tipo + análisis previo": {
+      "tp": 29,
+      "fp": 2,
+      "fn": 0,
+      "precision": 0.9354838709677419,
+      "recall": 1.0,
+      "f1": 0.9666666666666666,
+      "errores_json": 0,
+      "segundos_medios": 27.664280845125035,
+      "fallos": [
+        "sobra CONTRASENA: AKIAUD1ZOVGZ507JU3MQ",
+        "sobra CONTRASENA: AIzaO2DnIyUJZoh5SW4o-sJXZLjvsbxIRqQcuV7"
+      ]
+    }
+  }
+}

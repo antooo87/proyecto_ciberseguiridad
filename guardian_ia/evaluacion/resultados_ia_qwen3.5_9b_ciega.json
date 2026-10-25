@@ -1,0 +1,202 @@
+{
+  "modo": "reglas + IA (qwen3.5:9b)",
+  "modelo": "qwen3.5:9b",
+  "ciega": {
+    "escudo": {
+      "por_tipo": {
+        "CLAVE_API": {
+          "tp": 3,
+          "fp": 0,
+          "fn": 0,
+          "total": 3,
+          "fuga": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tasa_fuga": 0.0
+        },
+        "CONTRASENA": {
+          "tp": 3,
+          "fp": 3,
+          "fn": 0,
+          "total": 3,
+          "fuga": 0,
+          "precision": 0.5,
+          "recall": 1.0,
+          "f1": 0.6666666666666666,
+          "tasa_fuga": 0.0
+        },
+        "DIRECCION": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "total": 2,
+          "fuga": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tasa_fuga": 0.0
+        },
+        "DNI": {
+          "tp": 5,
+          "fp": 0,
+          "fn": 0,
+          "total": 5,
+          "fuga": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tasa_fuga": 0.0
+        },
+        "EMAIL": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "total": 2,
+          "fuga": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tasa_fuga": 0.0
+        },
+        "IBAN": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 1,
+          "total": 2,
+          "fuga": 0,
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6666666666666666,
+          "tasa_fuga": 0.0
+        },
+        "IP": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "total": 2,
+          "fuga": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tasa_fuga": 0.0
+        },
+        "MATRICULA": {
+          "tp": 1,
+          "fp": 0,
+          "fn": 0,
+          "total": 1,
+          "fuga": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tasa_fuga": 0.0
+        },
+        "NIE": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "total": 2,
+          "fuga": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tasa_fuga": 0.0
+        },
+        "PERSONA": {
+          "tp": 7,
+          "fp": 0,
+          "fn": 0,
+          "total": 7,
+          "fuga": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tasa_fuga": 0.0
+        },
+        "TARJETA": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 1,
+          "total": 3,
+          "fuga": 0,
+          "precision": 1.0,
+          "recall": 0.6666666666666666,
+          "f1": 0.8,
+          "tasa_fuga": 0.0
+        },
+        "TELEFONO": {
+          "tp": 5,
+          "fp": 0,
+          "fn": 0,
+          "total": 5,
+          "fuga": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tasa_fuga": 0.0
+        }
+      },
+      "global": {
+        "tp": 35,
+        "fp": 3,
+        "fn": 2,
+        "total": 37,
+        "fuga": 0,
+        "precision": 0.9210526315789473,
+        "recall": 0.9459459459459459,
+        "tasa_fuga": 0.0
+      },
+      "textos": 35,
+      "ms_por_texto": 15118.58,
+      "errores": [
+        {
+          "id": 5,
+          "error": "no detectado",
+          "tipo": "IBAN",
+          "valor": "es95 4021 7617 6667 5985 8980"
+        },
+        {
+          "id": 5,
+          "error": "tapado de más",
+          "tipo": "CONTRASENA",
+          "valor": "es95 4021 7617 6667 5985 8980"
+        },
+        {
+          "id": 6,
+          "error": "no detectado",
+          "tipo": "TARJETA",
+          "valor": "4291.1929.7434.7085"
+        },
+        {
+          "id": 6,
+          "error": "tapado de más",
+          "tipo": "CONTRASENA",
+          "valor": "4291.1929.7434.7085"
+        },
+        {
+          "id": 6,
+          "error": "tapado de más",
+          "tipo": "CONTRASENA",
+          "valor": "412"
+        }
+      ]
+    },
+    "aduana": {
+      "documentos": 20,
+      "maliciosos": 10,
+      "limpios": 10,
+      "deteccion": 1.0,
+      "falsas_alarmas": 0.0,
+      "bloqueo_ataques": 1.0,
+      "bloqueo_limpios": 0.0,
+      "fallos": []
+    },
+    "juez_solo": {
+      "deteccion": 1.0,
+      "falsas_alarmas": 0.0,
+      "errores": 0
+    }
+  },
+  "segundos": 1196.8
+}
