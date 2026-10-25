@@ -1,0 +1,12 @@
+# Entornos y archivos que genera Python (el software tiene además su propio .gitignore)
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+~$*
