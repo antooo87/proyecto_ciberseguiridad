@@ -7,6 +7,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 ### Añadido
 - **Revisar carpetas antes de dárselas a una IA** (`python -m guardian escanear CARPETA`): cada documento (texto, HTML, Word, PDF) pasa por el escudo y la aduana y sale con un veredicto: TRAMPA, DATOS PERSONALES, NO SE PUEDE LEER o LIMPIO. No entra en `.git`, `.venv` ni carpetas ocultas, y el informe (`--informe`, `--json`) cuenta los datos por tipo sin enseñarlos nunca.
 - **Anonimizar documentos** (`python -m guardian anonimizar ARCHIVO`): copia con solo lo que se ve (sin letra blanca ni invisibles) y los datos tapados, lista para compartir con cualquier IA.
+- **`python -m guardian doctor`**: comprueba Python, que el entorno virtual está activado, las librerías (también si están instaladas a medias, como Streamlit sin `streamlit.proto`), si la ruta es tan larga que Windows corta archivos al instalar, y Ollama con el modelo. Para cada fallo dice el comando que lo arregla. Funciona aunque falten librerías.
 - Web: pestaña "Revisar una carpeta" (una carpeta del PC o varios archivos subidos, con informe descargable) y anonimizar con descarga.
 
 ### Arreglado

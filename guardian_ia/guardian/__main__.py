@@ -64,6 +64,27 @@ def _crear_verificador(respaldo: bool, comprobar_enlaces: bool, modelo_detector:
     return Verificador(juez, comprobar_enlaces)
 
 
+def cmd_doctor(args):
+    from .doctor import AVISO, FALLO, OK, revisar
+    comprobaciones = revisar(comprobar_ollama=not args.sin_ollama)
+    marca = {OK: f"{VERDE}✓", AVISO: f"{AMARILLO}!", FALLO: f"{ROJO}✗"}
+    print(f"{NEGRITA}Guardián IA {__version__} · comprobando que todo está listo{FIN}\n")
+    for c in comprobaciones:
+        print(f"{marca[c.estado]} {c.nombre}{FIN}: {c.detalle}")
+        if c.arreglo and c.estado != OK:
+            print(f"    {VERDE}→ {c.arreglo}{FIN}")
+    fallos = sum(c.estado == FALLO for c in comprobaciones)
+    avisos = sum(c.estado == AVISO for c in comprobaciones)
+    print()
+    if fallos:
+        print(f"{ROJO}Hay {fallos} cosa(s) que arreglar antes de usar el Guardián.{FIN}")
+    elif avisos:
+        print(f"{AMARILLO}Funciona, con {avisos} aviso(s).{FIN} Prueba: python -m guardian demo")
+    else:
+        print(f"{VERDE}Todo listo.{FIN} Prueba: python -m guardian demo")
+    return 1 if fallos else 0
+
+
 def cmd_estado(args):
     from .ia import crear_cliente
     ia = crear_cliente(args.proveedor, args.modelo, args.url)
@@ -388,6 +409,10 @@ def main(argv=None):
     s.add_argument("--modelo-detector", default=None)
     s.add_argument("--pausa", action="store_true", help="esperar a que pulses Enter entre módulo y módulo")
     s.set_defaults(func=cmd_demo)
+
+    s = sub.add_parser("doctor", help="comprueba Python, el entorno, las librerías y Ollama, y dice cómo arreglarlos")
+    s.add_argument("--sin-ollama", action="store_true", help="no comprobar Ollama")
+    s.set_defaults(func=cmd_doctor)
 
     s = sub.add_parser("estado", help="comprueba la IA y el modelo")
     opciones_ia(s)

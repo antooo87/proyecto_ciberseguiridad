@@ -47,6 +47,7 @@ python -m guardian demo
 ```
 
 ```powershell
+python -m guardian doctor                                   # ¿está todo instalado? Dice cómo arreglar lo que falle
 python -m guardian estado                                   # ¿está lista la IA?
 python -m guardian proteger "Mi DNI es 12345678Z"           # qué vería la IA (no necesita Ollama)
 python -m guardian chat --ia                                # chat protegido (con detector y juez IA locales)
