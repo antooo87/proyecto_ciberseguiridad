@@ -7,7 +7,8 @@ Uso (desde la carpeta del proyecto, con el entorno virtual activado):
     python -m guardian chat --ia              ... y además usa la IA local para detectar nombres, direcciones,
                                               contraseñas escritas a mano y ataques en documentos
     python -m guardian proteger "texto"       enseña qué vería la IA (no necesita Ollama)
-    python -m guardian aduana documento.pdf   revisa un documento (texto, Word o PDF) en busca de prompt injection
+    python -m guardian aduana documento.pdf   revisa un documento (texto, Word, PowerPoint, Excel o PDF) en busca de
+                                              prompt injection
     python -m guardian verificar "respuesta"  revisa una respuesta de cualquier IA (ChatGPT, Gemini...)
     python -m guardian revisar                revisa la IA instalada en tu PC (añade --demo para un PC de prueba)
     python -m guardian proxy                  pone el Guardián delante de cualquier programa que use la IA
@@ -110,7 +111,7 @@ def cmd_proteger(args):
 
 
 def _leer(ruta):
-    """Lee texto, Word o PDF. Devuelve None (y lo explica) si no se puede."""
+    """Lee texto, Word, PowerPoint, Excel o PDF. Devuelve None (y lo explica) si no se puede."""
     from .aduana import ErrorLectura, leer
     try:
         return leer(ruta)
@@ -459,7 +460,7 @@ def main(argv=None):
     s.add_argument("--ia", action="store_true")
     s.set_defaults(func=cmd_proteger)
 
-    s = sub.add_parser("aduana", help="revisa un documento (texto, Word o PDF) contra prompt injection")
+    s = sub.add_parser("aduana", help="revisa un documento (texto, Word, PowerPoint, Excel o PDF) contra prompt injection")
     s.add_argument("archivo")
     s.add_argument("--ia", action="store_true", help="pedir también la opinión del juez IA")
     s.set_defaults(func=cmd_aduana)

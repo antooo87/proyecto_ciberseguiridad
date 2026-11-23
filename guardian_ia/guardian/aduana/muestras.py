@@ -55,6 +55,18 @@ def tabla(filas: list[list[str]], fondo_cabecera: str | None = None, color_cabec
     return "".join(xml)
 
 
+def core_xml(propiedades: dict | None) -> str:
+    """docProps/core.xml: título, asunto, autor, palabras clave y descripción del archivo de Office."""
+    propiedades = propiedades or {}
+    meta = "".join(f"<{etiqueta}>{escape(propiedades[clave])}</{etiqueta}>" for clave, etiqueta in (
+        ("titulo", "dc:title"), ("asunto", "dc:subject"), ("autor", "dc:creator"), ("palabras", "cp:keywords"),
+        ("descripcion", "dc:description")) if propiedades.get(clave))
+    return ("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><cp:coreProperties "
+            "xmlns:cp=\"http://schemas.openxmlformats.org/package/2006/metadata/core-properties\" "
+            "xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:dcterms=\"http://purl.org/dc/terms/\">"
+            f"{meta}</cp:coreProperties>")
+
+
 def crear_docx(cuerpo: list[str], estilos_extra: str = "", propiedades: dict | None = None,
                relaciones: list[tuple[str, str]] = (), archivos_extra: dict[str, bytes] | None = None) -> bytes:
     """cuerpo: párrafos y tablas en XML. relaciones: (tipo, destino) externas, p. ej. ("hyperlink", "https://...")."""
@@ -92,13 +104,7 @@ def crear_docx(cuerpo: list[str], estilos_extra: str = "", propiedades: dict | N
                "<w:style w:type=\"paragraph\" w:styleId=\"Titulo1\"><w:name w:val=\"heading 1\"/>"
                "<w:basedOn w:val=\"Normal\"/><w:rPr><w:b/><w:color w:val=\"1F3864\"/><w:sz w:val=\"32\"/></w:rPr>"
                f"</w:style>{estilos_extra}</w:styles>")
-    meta = "".join(f"<{etiqueta}>{escape(propiedades[clave])}</{etiqueta}>" for clave, etiqueta in (
-        ("titulo", "dc:title"), ("asunto", "dc:subject"), ("autor", "dc:creator"), ("palabras", "cp:keywords"),
-        ("descripcion", "dc:description")) if propiedades.get(clave))
-    core = ("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><cp:coreProperties "
-            "xmlns:cp=\"http://schemas.openxmlformats.org/package/2006/metadata/core-properties\" "
-            "xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:dcterms=\"http://purl.org/dc/terms/\">"
-            f"{meta}</cp:coreProperties>")
+    core = core_xml(propiedades)
     salida = io.BytesIO()
     with zipfile.ZipFile(salida, "w", zipfile.ZIP_DEFLATED) as z:
         for nombre, contenido in (("[Content_Types].xml", tipos), ("_rels/.rels", rels),

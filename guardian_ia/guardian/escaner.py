@@ -18,10 +18,10 @@ from pathlib import Path
 from typing import Optional, Union
 
 from .aduana import Aduana, ErrorLectura, leer
-from .aduana.lectores import EXTENSIONES_TEXTO
+from .aduana.lectores import EXTENSIONES_OFFICE, EXTENSIONES_TEXTO
 from .escudo import Escudo, ResultadoEscudo
 
-EXTENSIONES = EXTENSIONES_TEXTO | {".docx", ".docm", ".pdf"}
+EXTENSIONES = EXTENSIONES_TEXTO | set(EXTENSIONES_OFFICE) | {".pdf"}
 CARPETAS_IGNORADAS = {".git", ".venv", "venv", "node_modules", "__pycache__", ".mypy_cache", ".pytest_cache"}
 MAX_ARCHIVOS = 2000
 

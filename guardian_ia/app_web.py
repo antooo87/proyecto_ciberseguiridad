@@ -46,11 +46,12 @@ EJEMPLO_RESPUESTA = ("¡Claro! Para arreglar el error abre PowerShell como admin
                      "para terminar.")
 
 
-TIPOS_DOCUMENTO = ["txt", "md", "html", "htm", "csv", "json", "eml", "docx", "pdf"]
+TIPOS_DOCUMENTO = ["txt", "md", "html", "htm", "csv", "json", "eml", "docx", "docm", "pptx", "pptm", "xlsx", "xlsm",
+                   "pdf"]
 
 
 def leer_subido(subido):
-    """Lee lo que se sube a la web (texto, Word o PDF). None si no se puede, y se explica por qué."""
+    """Lee lo que se sube a la web (texto, Word, PowerPoint, Excel o PDF). None si no se puede, y se explica por qué."""
     try:
         return leer(subido.getvalue(), subido.name)
     except ErrorLectura as e:
@@ -200,10 +201,11 @@ with tab_chat:
 # ---------------- 3. Aduana ----------------
 with tab_aduana:
     st.subheader("¿Este documento esconde órdenes para la IA?")
-    subido = st.file_uploader("Sube un documento: texto, HTML, Word (.docx) o PDF", type=TIPOS_DOCUMENTO)
+    subido = st.file_uploader("Sube un documento: texto, HTML, Word, PowerPoint, Excel o PDF", type=TIPOS_DOCUMENTO)
     documento = leer_subido(subido) if subido else st.text_area("...o pégalo aquí", EJEMPLO_DOC, height=140)
-    st.caption("Prueba con los ejemplos de la carpeta `ejemplos/`: cv_con_trampa.docx, articulo_con_trampa.pdf "
-               "e informe_limpio.docx (este no debe dar alarma).")
+    st.caption("Prueba con los ejemplos de la carpeta `ejemplos/`: cv_con_trampa.docx, articulo_con_trampa.pdf, "
+               "presentacion_con_trampa.pptx, presupuesto_con_trampa.xlsx e informe_limpio.docx (este no debe dar "
+               "alarma).")
     if documento is not None and st.button("Analizar documento", type="primary"):
         informe = crear_aduana(con_ia, modelo_detector).analizar(documento)
         for aviso in informe.avisos:
