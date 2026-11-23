@@ -20,6 +20,15 @@ const CASOS = [
   ["llámame al 612 345 678", ["TELEFONO"]],
   ["mi contraseña: Verano2026!", ["CONTRASENA"]],
   ["la clave de la API es " + "sk-" + "proj-" + "a1B2c3D4e5F6g7H8i9J0k1L2", ["CLAVE_API"]],
+  ["la empresa tiene CIF B-12345674", ["CIF"]],
+  ["la empresa tiene CIF B-12345675", []], // control incorrecto
+  ["el ayuntamiento tiene CIF P1234567D", ["CIF"]], // las entidades públicas llevan letra de control
+  ["mi número de la Seguridad Social es 28 12345678 40", ["NSS"]],
+  ["el pedido 281234567840 ya ha salido", []], // 12 cifras sin decir qué son
+  ["mi pasaporte es PAA123456", ["PASAPORTE"]],
+  ["fecha de nacimiento: 12/03/1990", ["FECHA_NACIMIENTO"]],
+  ["nací el 3 de mayo de 1999", ["FECHA_NACIMIENTO"]],
+  ["la reunión es el 12/03/2026", []],
   ["Hola, ¿qué tiempo hace hoy en Madrid?", []],
   ["Factura 2026-118 por 450,00 € a 30 días", []],
 ];

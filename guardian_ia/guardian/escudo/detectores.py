@@ -75,6 +75,20 @@ REGLAS = [
     # --- Identidad ---
     Regla("DNI", re.compile(r"\b\d{8}[ -]?[A-Za-z]\b"), v.dni_valido, prioridad=7),
     Regla("NIE", re.compile(r"\b[XYZxyz][ -]?\d{7}[ -]?[A-Za-z]\b"), v.nie_valido, prioridad=7),
+    # CIF de empresas: B12345674, B-12345674 o B-12.345.674 (en mayúsculas, para no confundirlo con códigos)
+    Regla("CIF", re.compile(r"\b[ABCDEFGHJNPQRSUVW]-?\d{2}\.?\d{3}\.?\d{2}-?[0-9A-J]\b"), v.cif_valido,
+          prioridad=7),
+    # Estos tres no tienen una forma única, así que solo se tapan si el texto dice qué son
+    Regla("NSS", re.compile(
+        r"(?i)(?:seguridad social|\bnu?ss\b|\bnaf\b|afiliaci[oó]n|\bs\.\s?s\.)[^\d\n]{0,30}?"
+        r"\b(\d{2}[ /-]?\d{8}[ /-]?\d{2})(?!\d)"), v.nss_valido, prioridad=7, grupo=1),
+    Regla("PASAPORTE", re.compile(
+        r"(?i)\b(?:pasaporte|passport)\b[^\d\n]{0,25}?\b([A-Z]{2,3}[ -]?\d{6})\b"), prioridad=7, grupo=1),
+    Regla("FECHA_NACIMIENTO", re.compile(
+        r"(?i)\b(?:fecha de nacimiento|f\. ?(?:de )?nac(?:imiento)?\.?|nac[ií]d[oa] el|nac[ií] el|"
+        r"date of birth|birth ?date|d\.?o\.?b\.?)[^\d\n]{0,15}?"
+        r"(\d{1,2}[/.-]\d{1,2}[/.-](?:19|20)?\d{2}|\d{1,2} de (?:enero|febrero|marzo|abril|mayo|junio|julio|"
+        r"agosto|se?ptiembre|octubre|noviembre|diciembre)(?: de)? \d{4})\b"), v.fecha_valida, prioridad=6, grupo=1),
 
     # --- Dinero ---
     Regla("IBAN", re.compile(

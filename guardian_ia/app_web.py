@@ -26,7 +26,8 @@ COLORES = {
     "DNI": "#f9c74f", "NIE": "#f9c74f", "EMAIL": "#90be6d", "TELEFONO": "#43aa8b", "IBAN": "#f8961e",
     "TARJETA": "#f3722c", "IP": "#577590", "MATRICULA": "#4d908e", "CONTRASENA": "#f94144",
     "CLAVE_API": "#f94144", "JWT": "#f94144", "CLAVE_PRIVADA": "#f94144", "PERSONA": "#b388eb",
-    "DIRECCION": "#8093f1",
+    "DIRECCION": "#8093f1", "CIF": "#f9c74f", "NSS": "#f9844a", "PASAPORTE": "#f9c74f",
+    "FECHA_NACIMIENTO": "#cdb4db",
 }
 NIVEL_COLOR = {"NINGUNO": "green", "BAJO": "green", "MEDIO": "orange", "ALTO": "red",
                "OK": "green", "AVISO": "orange", "PELIGRO": "red"}

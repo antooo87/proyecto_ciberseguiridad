@@ -69,3 +69,32 @@ def test_correo_con_dni_dentro_se_tapa_entero():
     r = Escudo().proteger("escríbeme a 12345678z@gmail.com o a ana.12345678Z@correo.es")
     assert r.protegido == "escríbeme a [EMAIL_1] o a [EMAIL_2]"
     assert "@" not in r.protegido
+
+
+def test_tipos_espanoles_nuevos():
+    casos = {
+        "La empresa con CIF B-12345674 nos debe dinero": ("CIF", "B-12345674"),
+        "El ayuntamiento (CIF P1234567D) paga a 60 días": ("CIF", "P1234567D"),
+        "Mi número de la Seguridad Social es 28 12345678 40": ("NSS", "28 12345678 40"),
+        "Nº afiliación S.S.: 28/12345678/40": ("NSS", "28/12345678/40"),
+        "Mi pasaporte es PAA123456 y caduca en 2030": ("PASAPORTE", "PAA123456"),
+        "Fecha de nacimiento: 12/03/1990": ("FECHA_NACIMIENTO", "12/03/1990"),
+        "Nací el 3 de mayo de 1999 en Sevilla": ("FECHA_NACIMIENTO", "3 de mayo de 1999"),
+    }
+    for texto, (tipo, dato) in casos.items():
+        r = Escudo().proteger(texto)
+        assert dato not in r.protegido and f"[{tipo}_1]" in r.protegido, texto
+
+
+def test_tipos_nuevos_no_tapan_lo_que_solo_se_parece():
+    textos = [
+        "CIF B-12345675 con el control mal",  # no cuadra el control
+        "P12345674: las entidades públicas llevan letra",  # P con número no es un CIF
+        "NSS: 28 12345678 41",  # control mal
+        "El pedido 281234567840 ya ha salido",  # 12 cifras sin decir qué son
+        "La referencia PAA123456 del almacén",  # sin la palabra pasaporte
+        "La reunión es el 12/03/2026",  # una fecha cualquiera
+        "Fecha de nacimiento: 45/13/1990",  # día y mes imposibles
+    ]
+    for t in textos:
+        assert Escudo().proteger(t).protegido == t, t

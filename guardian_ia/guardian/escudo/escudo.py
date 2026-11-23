@@ -23,7 +23,7 @@ MARCADOR = re.compile(r"\[\s*([A-Za-z_]+?_\d+)\s*\]")
 ZONA_ENLACE = re.compile(r"\]\([^)]*\)|https?://\S+|(?:src|href)\s*=\s*[\"'][^\"']*[\"']", re.IGNORECASE)
 
 # Tipos en los que "1234 5678" y "12345678" son el mismo dato
-TIPOS_NUMERICOS = {"DNI", "NIE", "IBAN", "TARJETA", "TELEFONO", "MATRICULA"}
+TIPOS_NUMERICOS = {"DNI", "NIE", "CIF", "NSS", "PASAPORTE", "IBAN", "TARJETA", "TELEFONO", "MATRICULA"}
 
 
 def normalizar(tipo: str, valor: str) -> str:
