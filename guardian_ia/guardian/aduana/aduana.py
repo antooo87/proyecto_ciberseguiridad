@@ -281,7 +281,9 @@ class Aduana:
             documento = documento.visible
         limpio = INVISIBLES.sub("", documento)
         limpio = COMENTARIO_HTML.sub("", limpio)
-        return unicodedata.normalize("NFKC", limpio)
+        # NFKC deshace los disfraces (letras de ancho completo, ligaduras...), pero respeta "n.º" y "1.ª"
+        return unicodedata.normalize(
+            "NFC", "".join(c if c in "ºª" else unicodedata.normalize("NFKC", c) for c in limpio))
 
 
 def leer_documento(ruta: str) -> str:

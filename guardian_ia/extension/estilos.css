@@ -1,0 +1,62 @@
+:root {
+  --fondo: #ffffff;
+  --fondo-suave: #f6f8fa;
+  --texto: #1f2328;
+  --texto-suave: #59636e;
+  --borde: #d1d9e0;
+  --azul: #1f6feb;
+  --verde: #1a7f37;
+  --amarillo: #9a6700;
+  --rojo: #d1242f;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fondo: #0d1117;
+    --fondo-suave: #161b22;
+    --texto: #e6edf3;
+    --texto-suave: #9198a1;
+    --borde: #3d444d;
+    --azul: #4493f8;
+    --verde: #3fb950;
+    --amarillo: #d29922;
+    --rojo: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 16px;
+  background: var(--fondo);
+  color: var(--texto);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+h1 { font-size: 18px; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+h1 img { width: 22px; height: 22px; }
+h2 { font-size: 15px; margin: 20px 0 8px; }
+p, li { color: var(--texto-suave); }
+.estado { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px;
+  background: var(--fondo-suave); border: 1px solid var(--borde); }
+.punto { width: 10px; height: 10px; border-radius: 50%; background: var(--texto-suave); flex: none; }
+.punto.ok { background: var(--verde); }
+.punto.mal { background: var(--rojo); }
+.caja { border: 1px solid var(--borde); border-radius: 8px; padding: 10px; background: var(--fondo-suave);
+  white-space: pre-wrap; word-break: break-word; max-height: 50vh; overflow: auto; }
+.nivel { display: inline-block; padding: 1px 8px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 600; }
+.nivel.OK { background: var(--verde); }
+.nivel.AVISO { background: var(--amarillo); }
+.nivel.PELIGRO { background: var(--rojo); }
+.hallazgo { margin: 6px 0; padding-left: 10px; border-left: 3px solid var(--amarillo); }
+.hallazgo.PELIGRO { border-left-color: var(--rojo); }
+.hallazgo code { display: block; color: var(--texto-suave); font-size: 12px; word-break: break-all; }
+button { font: inherit; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--borde);
+  background: var(--fondo-suave); color: var(--texto); cursor: pointer; }
+button.principal { background: var(--azul); border-color: var(--azul); color: #fff; }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--azul); outline-offset: 1px; }
+textarea, input[type=text], input[type=password], input[type=number] { width: 100%; font: inherit; padding: 8px;
+  border-radius: 6px; border: 1px solid var(--borde); background: var(--fondo); color: var(--texto); }
+.fila { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.pequeno { font-size: 12px; color: var(--texto-suave); }
+label.opcion { display: flex; gap: 8px; align-items: flex-start; margin: 10px 0; }
+label.opcion input { margin-top: 4px; }
+.oculto { display: none; }

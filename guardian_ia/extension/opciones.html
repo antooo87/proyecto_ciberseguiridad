@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Opciones del Guardián IA</title>
+  <link rel="stylesheet" href="estilos.css">
+  <style>body { max-width: 640px; margin: 0 auto; }</style>
+</head>
+<body>
+  <h1><img src="iconos/icono48.png" alt="">Opciones del Guardián IA</h1>
+  <p>La extensión no tapa nada por sí misma: se lo pide al Guardián de tu PC, que es donde están las reglas y la IA local. Así tus datos nunca salen del ordenador.</p>
+
+  <h2>1. Arranca el servicio en tu PC</h2>
+  <p>En PowerShell, dentro de la carpeta <code>guardian_ia</code> y con el entorno activado:</p>
+  <div class="caja">python -m guardian servicio</div>
+  <p class="pequeno">Con <code>--ia</code> tapa también nombres, direcciones y contraseñas escritas a mano (más lento).</p>
+
+  <h2>2. Pega la clave que sale en esa ventana</h2>
+  <label for="clave">Clave del servicio</label>
+  <input type="password" id="clave" autocomplete="off" spellcheck="false">
+  <label for="puerto" style="display:block;margin-top:10px">Puerto</label>
+  <input type="number" id="puerto" min="1024" max="65535" style="max-width:140px">
+  <div class="fila"><button id="guardar" class="principal">Guardar y probar</button><span id="resultado" class="pequeno"></span></div>
+
+  <h2>3. Cómo quieres que te proteja</h2>
+  <label class="opcion"><input type="checkbox" id="alPegar"><span><b>Tapar los datos al pegar.</b> Cuando pegas un texto en el chat, se pega ya con los datos tapados ([DNI_1]…). Si es largo, la aduana mira también si esconde órdenes para la IA.</span></label>
+  <label class="opcion"><input type="checkbox" id="antesDeEnviar"><span><b>Revisar antes de enviar.</b> Si lo que has escrito parece llevar datos, se tapan y te deja revisarlo antes de mandarlo.</span></label>
+  <label class="opcion"><input type="checkbox" id="revisarTodo"><span><b>Revisar todos los mensajes en el Guardián del PC.</b> Más seguro (con <code>--ia</code> pilla nombres y direcciones), pero cada mensaje hay que enviarlo dos veces.</span></label>
+  <label class="opcion"><input type="checkbox" id="bloquearSinServicio"><span><b>Si el Guardián del PC está apagado, no dejar pasar textos con datos.</b> Recomendado.</span></label>
+
+  <h2>Privacidad</h2>
+  <p class="pequeno">La extensión solo habla con <code>127.0.0.1</code> (tu PC). La clave se guarda en el almacenamiento de la extensión, que las webs no pueden leer. Tus datos reales solo se enseñan en el panel lateral, nunca dentro de la web del chatbot.</p>
+  <script src="opciones.js"></script>
+</body>
+</html>

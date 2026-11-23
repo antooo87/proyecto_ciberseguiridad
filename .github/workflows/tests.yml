@@ -26,3 +26,23 @@ jobs:
       - run: python -m guardian revisar --demo --sin-red
       - run: python -m guardian aduana ejemplos/informe_limpio.docx
       - run: python -m guardian demo
+
+  extension:
+    name: extensión del navegador (Chromium de verdad)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: guardian_ia
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: pip install -e .
+      - run: node extension/pruebas/comun.test.js
+      - run: npm install --no-save --no-package-lock playwright@1.63.0
+      - run: npx playwright install --with-deps chromium
+      - run: node extension/pruebas/e2e.js
