@@ -34,15 +34,21 @@ async function mostrarActividad() {
   const r = await pedir({ tipo: "actividad" });
   if (!r.ok) return;
   const suma = (o) => Object.values(o || {}).reduce((a, b) => a + b, 0);
+  const cuantos = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
   const frases = [];
   if (!r.sucesos) frases.push("Todavía no ha tenido que hacer nada.");
   else {
-    frases.push(`${r.datos_tapados} datos personales tapados antes de llegar a la IA`);
-    if (r.documentos_con_trampa) frases.push(`${r.documentos_con_trampa} textos o documentos con trampas desinfectados`);
-    if (r.respuestas.PELIGRO || r.respuestas.AVISO) {
-      frases.push(`${r.respuestas.PELIGRO} respuestas con peligro y ${r.respuestas.AVISO} con aviso`);
+    frases.push(`${cuantos(r.datos_tapados, "dato personal tapado", "datos personales tapados")} antes de llegar a la IA`);
+    if (r.documentos_con_trampa) {
+      frases.push(cuantos(r.documentos_con_trampa, "texto o documento con trampas desinfectado",
+        "textos o documentos con trampas desinfectados"));
     }
-    if (suma(r.acciones_bloqueadas)) frases.push(`${suma(r.acciones_bloqueadas)} acciones de agentes bloqueadas`);
+    if (r.respuestas.PELIGRO || r.respuestas.AVISO) {
+      frases.push(`${cuantos(r.respuestas.PELIGRO || 0, "respuesta con peligro", "respuestas con peligro")} y ` +
+        `${r.respuestas.AVISO || 0} con aviso`);
+    }
+    const acciones = suma(r.acciones_bloqueadas);
+    if (acciones) frases.push(cuantos(acciones, "acción de un agente bloqueada", "acciones de agentes bloqueadas"));
   }
   $("actividad").replaceChildren(...frases.map((f) => {
     const li = document.createElement("li");
@@ -69,7 +75,7 @@ function pintar(ultima) {
   }
   $("nivel").className = `nivel ${ultima.nivel}`;
   $("nivel").textContent = ultima.nivel;
-  $("origen").textContent = `${ultima.origen} · ${new Date(ultima.hora).toLocaleTimeString()}`;
+  $("origen").textContent = `${ultima.origen} · ${new Date(ultima.hora).toLocaleTimeString("es-ES")}`;
   $("hallazgos").replaceChildren(...(ultima.hallazgos || []).map((h) => {
     const caja = document.createElement("div");
     caja.className = `hallazgo ${h.gravedad}`;

@@ -32,6 +32,9 @@ Entrega final: el Guardián sale de la terminal. Funciona dentro de las webs de 
 ### Cambiado
 - El proxy apunta en el registro el tipo de cada aviso de la respuesta (para el panel de actividad).
 - El médico recomienda `instalar.ps1` cuando falta el entorno o la ruta es demasiado larga.
+- Si Ollama no responde, el aviso sale en español y dice cómo abrirlo y qué sigue funcionando sin él.
+- La web avisa al anonimizar sin la detección con IA (sin ella no se tapan nombres ni direcciones).
+- La prueba de la extensión usa su propia carpeta de registro y no se mezcla con tu actividad real.
 
 ## [0.3.0] - 2026-10-24
 

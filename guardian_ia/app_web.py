@@ -273,6 +273,9 @@ with tab_carpeta:
         else:
             tapados = ", ".join(f"{n} {t}" for t, n in resultado_anon.resumen().items()) or "ningún dato"
             st.caption(f"Tapados: {tapados}" + (f" · quitados {quitados} trozo(s) de texto escondido" if quitados else ""))
+            if not con_ia:
+                st.info("Sin la detección con IA (barra lateral) no se tapan los nombres, las direcciones ni las "
+                        "contraseñas escritas a mano: actívala antes de compartir la copia.")
             st.code(texto_anon, language=None, wrap_lines=True)
             nombre_anon = os.path.splitext(para_anonimizar.name)[0] + "_anonimizado.txt"
             st.download_button("Descargar la copia anonimizada", texto_anon, nombre_anon)
@@ -352,7 +355,7 @@ def grafico_barras(filas, campo, valor, horizontal):
     return marca.encode(
         eje_valor(f"{valor}:Q", title=None, axis=alt.Axis(tickMinStep=1, format="d", gridOpacity=0.35)),
         eje_campo(f"{campo}:N" if horizontal else f"{campo}:O", title=None, sort="-x" if horizontal else None,
-                  axis=alt.Axis(labelAngle=0, ticks=False, domain=False)),
+                  axis=alt.Axis(labelAngle=0, ticks=False, domain=False, labelLimit=260)),
         tooltip=[alt.Tooltip(f"{campo}:N"), alt.Tooltip(f"{valor}:Q")],
     ).properties(height=max(120, 30 * len(filas)) if horizontal else 220).configure_view(stroke=None)
 

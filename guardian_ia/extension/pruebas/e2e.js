@@ -26,7 +26,8 @@ const captura = (pagina, nombre, extra = {}) =>
 function arrancarServicio() {
   const python = process.env.PYTHON || (process.platform === "win32" ? "python" : "python3");
   const hijo = spawn(python, ["-m", "guardian", "servicio", "--puerto", String(PUERTO), "--clave", CLAVE,
-    "--ocultar-clave"], { cwd: RAIZ, env: { ...process.env, HOME: TEMPORAL, USERPROFILE: TEMPORAL },
+    "--ocultar-clave"], { cwd: RAIZ, env: { ...process.env, HOME: TEMPORAL, USERPROFILE: TEMPORAL,
+      GUARDIAN_REGISTRO: path.join(TEMPORAL, "registro") }, // no mezclar la prueba con tu actividad real
     stdio: ["ignore", "pipe", "pipe"] });
   hijo.stderr.on("data", (d) => process.stderr.write(`[servicio] ${d}`));
   return hijo;
@@ -68,6 +69,7 @@ function comprobar(cond, texto) {
     channel: "chromium",
     headless: true,
     viewport: { width: 1100, height: 900 },
+    deviceScaleFactor: CAPTURAS ? 2 : 1, // capturas nítidas para la memoria
     args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`],
   });
   let [sw] = contexto.serviceWorkers();
@@ -198,7 +200,7 @@ function comprobar(cond, texto) {
   comprobar(textoPanel.includes("Según el correo"), "el panel abierto en pestaña enseña la última respuesta");
   const semana = await panel.textContent("#actividad");
   console.log("esta semana:", semana);
-  comprobar(/\d+ datos personales tapados/.test(semana) && /respuestas con peligro/.test(semana),
+  comprobar(/\d+ datos? personal(es)? tapados?/.test(semana) && /respuestas? con peligro/.test(semana),
     "el panel enseña lo que ha hecho el Guardián esta semana (sin datos)");
   // Lo que hace el botón «Leer la última respuesta» con la página de prueba
   const porTabs = await panel.evaluate((t) => new Promise((r) => chrome.tabs.sendMessage(t, { tipo: "ultima_respuesta" },

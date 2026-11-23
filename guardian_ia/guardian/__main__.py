@@ -444,6 +444,11 @@ def cmd_web(args):
         return 0
 
 
+def _cuantos(n: int, uno: str, varios: str) -> str:
+    """1 mensaje, 3 mensajes."""
+    return f"{n} {uno if n == 1 else varios}"
+
+
 def cmd_informe(args):
     from datetime import datetime
 
@@ -459,20 +464,20 @@ def cmd_informe(args):
         return 0
     donde = " · ".join(f"{d} {n}" for d, n in actividad.donde.most_common())
     print(f"{NEGRITA}Lo que ha hecho el Guardián{FIN} del {actividad.desde:%d/%m/%Y} al {actividad.hasta:%d/%m/%Y} "
-          f"{GRIS}({periodo}: {actividad.sucesos} sucesos · {donde}){FIN}")
+          f"{GRIS}({periodo}: {_cuantos(actividad.sucesos, 'suceso', 'sucesos')} · {donde}){FIN}")
     print(f"{GRIS}Leído de {actividad.carpeta}/: el registro nunca guarda tus datos, solo cuántos y de qué tipo.{FIN}\n")
 
     print(f"{NEGRITA}Datos tapados antes de llegar a la IA:{FIN} {VERDE}{actividad.datos_tapados}{FIN}"
-          + (f" en {actividad.mensajes_con_datos} mensajes" if actividad.datos else ""))
+          + (f" en {_cuantos(actividad.mensajes_con_datos, 'mensaje', 'mensajes')}" if actividad.datos else ""))
     if actividad.datos:
         ancho, maximo = max(map(len, actividad.datos)), max(actividad.datos.values())
         for tipo, n in actividad.datos.most_common():
             print(f"  {tipo:<{ancho}} {n:>5}  {AZUL}{'█' * max(1, round(24 * n / maximo))}{FIN}")
 
-    trampas = actividad.documentos_con_trampa
+    trampas, bloqueados = actividad.documentos_con_trampa, actividad.documentos_bloqueados
     print(f"{NEGRITA}Documentos o textos pegados con trampas:{FIN} "
-          + (f"{ROJO}{trampas}{FIN} ({actividad.documentos_bloqueados} bloqueados, "
-             f"{trampas - actividad.documentos_bloqueados} desinfectados antes de dárselos a la IA)" if trampas
+          + (f"{ROJO}{trampas}{FIN} ({_cuantos(bloqueados, 'bloqueado', 'bloqueados')}, "
+             f"{_cuantos(trampas - bloqueados, 'desinfectado', 'desinfectados')} antes de dárselos a la IA)" if trampas
              else f"{VERDE}ninguno{FIN}"))
 
     r = actividad.respuestas
@@ -484,9 +489,11 @@ def cmd_informe(args):
 
     if actividad.acciones_bloqueadas or actividad.resultados_bloqueados:
         acciones = ", ".join(f"{h} ×{n}" for h, n in actividad.acciones_bloqueadas.most_common())
-        print(f"{NEGRITA}Agentes:{FIN} {ROJO}{sum(actividad.acciones_bloqueadas.values())} acciones bloqueadas{FIN}"
+        bloqueadas = sum(actividad.acciones_bloqueadas.values())
+        print(f"{NEGRITA}Agentes:{FIN} {ROJO}{_cuantos(bloqueadas, 'acción bloqueada', 'acciones bloqueadas')}{FIN}"
               + (f" ({acciones})" if acciones else "")
-              + f" · {actividad.resultados_bloqueados} resultados de herramienta con trampa que no se le dieron a la IA")
+              + f" · {_cuantos(actividad.resultados_bloqueados, 'resultado', 'resultados')} de herramienta con "
+              "trampa que no se le dio a la IA")
 
     if actividad.ultimos and args.ultimos:
         print(f"\n{NEGRITA}Lo último importante:{FIN}")
