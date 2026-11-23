@@ -13,6 +13,7 @@ Uso (desde la carpeta del proyecto, con el entorno virtual activado):
     python -m guardian revisar                revisa la IA instalada en tu PC (añade --demo para un PC de prueba)
     python -m guardian proxy                  pone el Guardián delante de cualquier programa que use la IA
     python -m guardian informe                lo que ha hecho el Guardián estos días (sin enseñar ningún dato)
+    python -m guardian web                    abre la web (solo en este PC)
     python -m guardian evaluar                mide el escudo y la aduana con los textos de prueba
 """
 
@@ -418,6 +419,30 @@ def cmd_evaluar(args):
     return evaluar_todo(con_ia=args.ia, modelo=args.modelo_detector, limite=args.limite, conjunto=args.conjunto)
 
 
+def cmd_web(args):
+    """Abre la web (app_web.py) solo en este PC, se lance desde la carpeta que se lance."""
+    import subprocess
+    from pathlib import Path
+    app = Path(__file__).resolve().parent.parent / "app_web.py"
+    if not app.exists():
+        print(f"{ROJO}No encuentro la web ({app}).{FIN} Viene con el código del proyecto: descárgalo de GitHub.")
+        return 1
+    try:
+        import streamlit  # noqa: F401
+    except ImportError:
+        print(f"{ROJO}Falta Streamlit.{FIN} Instálalo con: pip install streamlit   (o con instalar.ps1 en Windows)")
+        return 1
+    orden = [sys.executable, "-m", "streamlit", "run", str(app), "--server.address", "127.0.0.1",
+             "--server.port", str(args.puerto), "--browser.gatherUsageStats", "false",
+             "--server.headless", "true" if args.sin_navegador else "false"]
+    print(f"{VERDE}Web del Guardián en http://127.0.0.1:{args.puerto}{FIN} {GRIS}(solo este PC puede abrirla; "
+          f"Ctrl+C para cerrarla){FIN}", flush=True)
+    try:
+        return subprocess.call(orden, cwd=app.parent)  # desde su carpeta: usa su .streamlit/config.toml
+    except KeyboardInterrupt:
+        return 0
+
+
 def cmd_informe(args):
     from datetime import datetime
 
@@ -586,6 +611,11 @@ def main(argv=None):
     s.add_argument("--modelo-detector", default=None)
     s.add_argument("--ocultar-clave", action="store_true", help="no enseñar la clave (por ejemplo, en una presentación)")
     s.set_defaults(func=cmd_servicio)
+
+    s = sub.add_parser("web", help="abre la web del Guardián en el navegador (solo en este PC)")
+    s.add_argument("--puerto", type=int, default=8501)
+    s.add_argument("--sin-navegador", action="store_true", help="no abrir el navegador solo")
+    s.set_defaults(func=cmd_web)
 
     s = sub.add_parser("informe", help="lo que ha hecho el Guardián estos días: datos tapados, trampas y avisos")
     s.add_argument("--dias", type=int, default=30, help="cuántos días mirar (0 = todo el registro; por defecto 30)")

@@ -23,7 +23,7 @@ LIBRERIAS = [
     ("httpx", "httpx", "el proxy y las APIs tipo OpenAI", True),
     ("pdfminer.high_level", "pdfminer.six", "leer PDF", True),
     ("defusedxml.ElementTree", "defusedxml", "leer Word de forma segura", False),
-    ("streamlit.proto.RootContainer_pb2", "streamlit", "la web (streamlit run app_web.py)", False),
+    ("streamlit.proto.RootContainer_pb2", "streamlit", "la web (guardian web)", False),
     ("pytest", "pytest", "las pruebas automáticas", False),
 ]
 LARGO_PELIGROSO = 120  # con más caracteres en la ruta del entorno, algunos archivos de Streamlit pasan de 260
@@ -48,10 +48,14 @@ def _python() -> Comprobacion:
 def _entorno() -> Comprobacion:
     if sys.prefix != getattr(sys, "base_prefix", sys.prefix):
         return Comprobacion("Entorno virtual", OK, f"activado: {sys.prefix}")
-    activar = r".venv\Scripts\Activate.ps1" if os.name == "nt" else "source .venv/bin/activate"
+    if os.name == "nt":
+        arreglo = ("Ejecuta una vez `powershell -ExecutionPolicy Bypass -File .\\instalar.ps1` y usa `.\\guardian` "
+                   "(sin activar nada), o crea el entorno con `python -m venv .venv` y actívalo con "
+                   "`.venv\\Scripts\\Activate.ps1`.")
+    else:
+        arreglo = "Créalo una vez con `python -m venv .venv` y actívalo en cada terminal con `source .venv/bin/activate`."
     return Comprobacion("Entorno virtual", AVISO, "no hay ninguno activado: las librerías se instalan en el Python "
-                        "de todo el PC y se pueden mezclar con las de otros proyectos",
-                        f"Créalo una vez con `python -m venv .venv` y actívalo en cada ventana con `{activar}`.")
+                        "de todo el PC y se pueden mezclar con las de otros proyectos", arreglo)
 
 
 def _ruta_larga() -> Comprobacion:
@@ -71,8 +75,9 @@ def _ruta_larga() -> Comprobacion:
             "Largo de la ruta", AVISO,
             f"el entorno está en una ruta de {len(sys.prefix)} caracteres y Windows corta las rutas de más de 260: "
             "al instalar librerías grandes (Streamlit) pueden quedar archivos sin copiar",
-            r"Crea el entorno en una ruta corta: `python -m venv C:\venvs\guardian` y "
-            r"`C:\venvs\guardian\Scripts\Activate.ps1`, y vuelve a hacer `pip install -r requirements.txt`.")
+            r"Vuelve a instalar con `powershell -ExecutionPolicy Bypass -File .\instalar.ps1`: con una ruta larga "
+            r"pone el entorno en %LOCALAPPDATA%\GuardianIA\entorno. A mano: `python -m venv C:\venvs\guardian`, "
+            r"`C:\venvs\guardian\Scripts\Activate.ps1` y `pip install -r requirements.txt`.")
     return Comprobacion("Largo de la ruta", OK, f"{len(sys.prefix)} caracteres, sin problema")
 
 

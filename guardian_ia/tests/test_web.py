@@ -28,3 +28,22 @@ def test_la_pestana_de_actividad_resume_el_registro(tmp_path, monkeypatch):
     metricas = {m.label: m.value for m in web.metric}
     assert metricas["Datos tapados"] == "10" and metricas["Documentos con trampas"] == "2"
     assert metricas["Acciones de agentes bloqueadas"] == "2"
+
+
+def test_guardian_web_solo_escucha_en_este_pc(monkeypatch):
+    import subprocess
+
+    from guardian.__main__ import main
+    llamadas = []
+    monkeypatch.setattr(subprocess, "call", lambda orden, cwd: llamadas.append((orden, cwd)) or 0)
+    assert main(["web", "--puerto", "8599", "--sin-navegador"]) == 0
+    orden, carpeta = llamadas[0]
+    assert orden[orden.index("--server.address") + 1] == "127.0.0.1"
+    assert orden[orden.index("--browser.gatherUsageStats") + 1] == "false"
+    assert orden[orden.index("--server.port") + 1] == "8599" and Path(carpeta) == WEB.parent
+
+
+def test_la_configuracion_de_la_web_no_sale_del_pc():
+    import tomllib
+    ajustes = tomllib.loads((WEB.parent / ".streamlit" / "config.toml").read_text(encoding="utf-8"))
+    assert ajustes["server"]["address"] == "127.0.0.1" and ajustes["browser"]["gatherUsageStats"] is False
