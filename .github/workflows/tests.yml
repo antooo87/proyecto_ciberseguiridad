@@ -11,6 +11,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       PYTHONUTF8: "1"  # salida en UTF-8 también en Windows
+    defaults:
+      run:
+        working-directory: guardian_ia  # el programa está en esta subcarpeta del repositorio
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
