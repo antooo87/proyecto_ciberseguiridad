@@ -58,3 +58,14 @@ def test_si_la_ia_falla_siguen_las_reglas():
     r = Escudo(detector_ia=DetectorIA(ia)).proteger("DNI 12345678Z")
     assert r.protegido == "DNI [DNI_1]"
     assert r.avisos
+
+
+def test_iban_en_minusculas():
+    r = Escudo().proteger("mi cuenta es es91 2100 0418 4502 0005 1332, gracias")
+    assert r.protegido == "mi cuenta es [IBAN_1], gracias"
+
+
+def test_correo_con_dni_dentro_se_tapa_entero():
+    r = Escudo().proteger("escríbeme a 12345678z@gmail.com o a ana.12345678Z@correo.es")
+    assert r.protegido == "escríbeme a [EMAIL_1] o a [EMAIL_2]"
+    assert "@" not in r.protegido

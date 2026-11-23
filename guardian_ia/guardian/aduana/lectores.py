@@ -26,6 +26,11 @@ from pathlib import Path
 from typing import Optional, Union
 from xml.etree import ElementTree
 
+try:  # defusedxml lee el XML sin expandir entidades ni DTD (bombas XML, XXE); si no está instalado, se usa el
+    from defusedxml import ElementTree as _XMLSeguro  # lector normal con la comprobación de DOCTYPE de _xml()
+except ImportError:  # pragma: no cover
+    _XMLSeguro = None
+
 MAX_BYTES = 50 * 1024 * 1024  # 50 MB por archivo
 MAX_PARTE_ZIP = 20 * 1024 * 1024  # 20 MB descomprimidos por cada parte del Word
 MAX_PAGINAS_PDF = 300
@@ -108,9 +113,13 @@ def _xml(z: zipfile.ZipFile, nombre: str) -> Optional[ElementTree.Element]:
     if b"<!DOCTYPE" in datos[:4096] or b"<!ENTITY" in datos[:4096]:
         raise ErrorLectura(f"La parte {nombre} trae declaraciones DOCTYPE/ENTITY: se rechaza por seguridad.")
     try:
+        if _XMLSeguro is not None:
+            return _XMLSeguro.fromstring(datos, forbid_dtd=True)
         return ElementTree.fromstring(datos)
     except ElementTree.ParseError as e:
         raise ErrorLectura(f"La parte {nombre} no es XML válido: {e}") from e
+    except ValueError as e:  # defusedxml: DTDForbidden, EntitiesForbidden...
+        raise ErrorLectura(f"La parte {nombre} trae construcciones XML peligrosas: se rechaza por seguridad.") from e
 
 
 def _hex_a_luz(valor: Optional[str]) -> Optional[float]:

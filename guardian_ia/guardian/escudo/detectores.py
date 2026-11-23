@@ -78,15 +78,18 @@ REGLAS = [
 
     # --- Dinero ---
     Regla("IBAN", re.compile(
-        r"\b[A-Z]{2}\d{2}(?:[ -]?[A-Z0-9]{4}){3,7}(?:[ -]?[A-Z0-9]{1,3})?\b"),
+        # También en minúsculas ("es91 2100 ..."): el validador lo pasa a mayúsculas antes de comprobarlo
+        r"\b[A-Za-z]{2}\d{2}(?:[ -]?[A-Za-z0-9]{4}){3,7}(?:[ -]?[A-Za-z0-9]{1,3})?\b"),
         v.iban_valido, prioridad=7, recortar=True),
     Regla("TARJETA", re.compile(
         r"(?<!\d)(?:(?:\d{4}[ -]?){3}\d{1,7}|\d{4}[ -]?\d{6}[ -]?\d{5})(?!\d)"),
         v.luhn_valido, prioridad=6),
 
     # --- Contacto ---
+    # Prioridad 8, por encima del DNI: en "12345678z@gmail.com" gana el correo entero (que ya tapa el DNI de dentro)
+    # en vez de tapar solo el DNI y dejar "[DNI_1]@gmail.com", que rompe el correo.
     Regla("EMAIL", re.compile(
-        r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"), prioridad=6),
+        r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"), prioridad=8),
     Regla("TELEFONO", re.compile(
         r"(?<![\w+.-])(?:(?:\+|00)34" + SEP + r")?[6789](?:" + SEP + r"\d){8}(?![.-]?\d)"),
         prioridad=5),

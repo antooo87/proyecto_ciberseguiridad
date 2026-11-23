@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versiones con [SemVer](https://semver.org/lang/es/).
 
+## [Sin publicar]
+
+### Arreglado
+- El escudo tapa también los IBAN escritos en minúsculas (`es91 2100 ...`). En la prueba ciega solo con reglas, la fuga baja del 37,8 % al 35,1 % (IBAN: de 1 de 2 a 2 de 2). Ojo: este fallo se vio en la lista de fallos de la prueba ciega, así que esa mejora ya no cuenta como medida a ciegas.
+- Un correo con un DNI dentro (`12345678z@gmail.com`) se tapa entero como `[EMAIL_1]`; antes se tapaba solo el DNI y quedaba `[DNI_1]@gmail.com`.
+- Los lectores de Word usan `defusedxml` (nueva dependencia) para leer el XML sin DTD ni entidades, además de la comprobación rápida de DOCTYPE que ya había.
+- La integración continua (`.github/workflows/tests.yml`) pasa a la raíz del repositorio, que es donde GitHub la busca.
+
 ## [0.3.0] - 2026-10-24
 
 Los cuatro módulos funcionan. Primera versión pensada para publicarse como software libre.
