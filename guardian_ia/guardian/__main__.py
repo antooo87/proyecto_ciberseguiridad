@@ -377,6 +377,34 @@ def cmd_proxy(args):
     return 0
 
 
+def cmd_servicio(args):
+    from .servicio import ServicioGuardian, ServidorServicio
+    servicio = ServicioGuardian(_crear_escudo(args.ia, args.modelo_detector),
+                                _crear_aduana(args.ia, args.modelo_detector))
+    try:
+        servidor = ServidorServicio(servicio, args.puerto, args.clave)
+    except OSError as e:
+        print(f"{ROJO}No puedo abrir el puerto {args.puerto}: {e}{FIN}")
+        return 1
+    print(f"{NEGRITA}Guardián IA {__version__} · servicio para la extensión del navegador{FIN}")
+    print(f"  Escucha en: {VERDE}http://127.0.0.1:{args.puerto}{FIN}   (solo este PC)")
+    print(f"  Detección con IA local: {'sí' if args.ia else 'no (solo reglas)'}")
+    if args.ocultar_clave:
+        print("  Clave: la de siempre (guardada en tu carpeta de usuario, .guardian/servicio.json)")
+    else:
+        print(f"  Clave para la extensión: {AMARILLO}{servidor.clave}{FIN}")
+        print(f"  {GRIS}Pégala una vez en las opciones de la extensión. Se guarda en .guardian/servicio.json, en tu "
+              f"carpeta de usuario.{FIN}")
+    print(f"{GRIS}Deja esta ventana abierta mientras uses la extensión. Ctrl+C para parar.{FIN}")
+    try:
+        servidor.serve_forever()
+    except KeyboardInterrupt:
+        print("\nServicio parado. La bóveda con tus datos se ha borrado.")
+    finally:
+        servidor.server_close()
+    return 0
+
+
 def cmd_demo(args):
     from .demo import ejecutar
     return ejecutar(_crear_escudo(args.ia, args.modelo_detector), _crear_aduana(args.ia, args.modelo_detector),
@@ -492,6 +520,15 @@ def main(argv=None):
                    help="spotlighting: señalar a la IA lo que viene de herramientas, entre etiquetas con un código "
                         "al azar (delimitar) o con una marca entre cada palabra (marcas)")
     s.set_defaults(func=cmd_proxy)
+
+    s = sub.add_parser("servicio", help="servicio local para la extensión del navegador (ChatGPT, Claude, Gemini...)")
+    s.add_argument("--puerto", type=int, default=8788)
+    s.add_argument("--clave", default=os.environ.get("GUARDIAN_CLAVE_SERVICIO"),
+                   help="clave propia (por defecto se crea una al azar y se guarda en ~/.guardian/servicio.json)")
+    s.add_argument("--ia", action="store_true", help="usar también la IA local (nombres, direcciones, ataques)")
+    s.add_argument("--modelo-detector", default=None)
+    s.add_argument("--ocultar-clave", action="store_true", help="no enseñar la clave (por ejemplo, en una presentación)")
+    s.set_defaults(func=cmd_servicio)
 
     s = sub.add_parser("evaluar", help="mide el Guardián con los textos de prueba")
     s.add_argument("--ia", action="store_true", help="incluir la detección con IA (necesita Ollama; tarda)")
