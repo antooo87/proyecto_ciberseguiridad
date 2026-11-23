@@ -4,6 +4,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## [Sin publicar]
 
+### Añadido
+- **Revisar carpetas antes de dárselas a una IA** (`python -m guardian escanear CARPETA`): cada documento (texto, HTML, Word, PDF) pasa por el escudo y la aduana y sale con un veredicto: TRAMPA, DATOS PERSONALES, NO SE PUEDE LEER o LIMPIO. No entra en `.git`, `.venv` ni carpetas ocultas, y el informe (`--informe`, `--json`) cuenta los datos por tipo sin enseñarlos nunca.
+- **Anonimizar documentos** (`python -m guardian anonimizar ARCHIVO`): copia con solo lo que se ve (sin letra blanca ni invisibles) y los datos tapados, lista para compartir con cualquier IA.
+- Web: pestaña "Revisar una carpeta" (una carpeta del PC o varios archivos subidos, con informe descargable) y anonimizar con descarga.
+
 ### Arreglado
 - El escudo tapa también los IBAN escritos en minúsculas (`es91 2100 ...`). En la prueba ciega solo con reglas, la fuga baja del 37,8 % al 35,1 % (IBAN: de 1 de 2 a 2 de 2). Ojo: este fallo se vio en la lista de fallos de la prueba ciega, así que esa mejora ya no cuenta como medida a ciegas.
 - Un correo con un DNI dentro (`12345678z@gmail.com`) se tapa entero como `[EMAIL_1]`; antes se tapaba solo el DNI y quedaba `[DNI_1]@gmail.com`.
