@@ -189,6 +189,29 @@ function comprobar(cond, texto) {
     "la IA repite lo que pedía el correo pegado: el Guardián avisa del eco de la trampa");
   await captura(page, "ext_eco.png");
 
+  // «✨ Mejorar» (Alt+M): una pregunta vaga se convierte en una clara, con el hueco del tema listo para escribir
+  await page.evaluate(() => { document.getElementById("compositor").textContent = ""; });
+  await page.focus("#compositor");
+  await page.keyboard.type("hola, ¿qué tal estás? ¿Me podrías ayudar con este tema?");
+  await page.waitForTimeout(300);
+  await captura(page, "ext_mejorar_boton.png");
+  await page.keyboard.press("Alt+KeyM");
+  await page.waitForTimeout(1500);
+  await captura(page, "ext_mejorar.png");
+  await page.keyboard.press("Enter"); // el foco está en «Usar esta» de la primera opción
+  await page.waitForTimeout(500);
+  await page.keyboard.type("la ley de protección de datos en mi empresa");
+  await page.waitForTimeout(300);
+  const mejorada = await page.innerText("#compositor");
+  console.log("mejorada:", mejorada.replace(/\n/g, " | "));
+  comprobar(mejorada.startsWith("Ayúdame con la ley de protección de datos en mi empresa.") &&
+    mejorada.includes("Ve al grano") && !/hola/i.test(mejorada),
+    "Alt+M cambia la pregunta vaga por una clara y deja el hueco del tema listo para escribir");
+  await page.press("#compositor", "Enter");
+  await page.waitForTimeout(1200);
+  const ultimaTu = await page.$$eval(".burbuja.tu div:not(.quien)", (ns) => ns[ns.length - 1].textContent);
+  comprobar(ultimaTu.includes("Ve al grano"), "la pregunta mejorada se envía a la primera");
+
   // El panel (abierto como pestaña) enseña la última respuesta
   const panel = await contexto.newPage();
   panel.on("pageerror", (e) => console.log("[panel error]", e.message));
@@ -197,7 +220,8 @@ function comprobar(cond, texto) {
   console.log("panel estado:", await panel.textContent("#estado-texto"));
   const textoPanel = await panel.textContent("#texto");
   console.log("panel texto:", textoPanel.slice(0, 200));
-  comprobar(textoPanel.includes("Según el correo"), "el panel abierto en pestaña enseña la última respuesta");
+  comprobar(textoPanel.includes("Según el correo") || textoPanel.includes("Perfecto, ahora sé"),
+    "el panel abierto en pestaña enseña la última respuesta");
   const semana = await panel.textContent("#actividad");
   console.log("esta semana:", semana);
   comprobar(/\d+ datos? personal(es)? tapados?/.test(semana) && /respuestas? con peligro/.test(semana),
@@ -208,7 +232,8 @@ function comprobar(cond, texto) {
   console.log("tabs.sendMessage a la prueba:", JSON.stringify(porTabs).slice(0, 120));
   const porRuntime = await panel.evaluate((t) => new Promise((r) => chrome.runtime.sendMessage({ tipo: "ultima_respuesta", tabId: t },
     (x) => r(chrome.runtime.lastError ? { error: chrome.runtime.lastError.message } : x))), tabId);
-  comprobar(porRuntime && porRuntime.ok && porRuntime.texto.includes("Según el correo"), "la página de prueba contesta al panel");
+  comprobar(porRuntime && porRuntime.ok && porRuntime.texto.includes("Perfecto, ahora sé"),
+    "la página de prueba contesta al panel");
   const otra = await panel.evaluate(() => new Promise((r) => chrome.runtime.sendMessage({ tipo: "ultima_respuesta", tabId: 1 },
     (x) => r(chrome.runtime.lastError ? { error: chrome.runtime.lastError.message } : x))));
   comprobar(!otra.ok, `si la pregunta es para otra pestaña no contesta (${otra.error})`);

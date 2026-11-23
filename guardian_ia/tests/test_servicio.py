@@ -82,3 +82,13 @@ def test_la_clave_se_crea_una_vez_y_se_reutiliza(tmp_path):
     archivo = tmp_path / "servicio.json"
     primera = clave_guardada(archivo)
     assert len(primera) >= 16 and clave_guardada(archivo) == primera
+
+
+def test_mejorar_pregunta_con_la_misma_boveda(servidor):
+    pedir(servidor, "POST", "/v1/guardian/proteger", {"texto": "DNI 12345678Z"})
+    codigo, r = pedir(servidor, "POST", "/v1/guardian/mejorar",
+                      {"texto": "hola, ¿me explicas qué hago con el DNI 12345678Z y el 87654321X?"})
+    assert codigo == 200
+    assert "[DNI_1]" in r["protegido"] and "[DNI_2]" in r["protegido"]  # el mismo DNI, el mismo marcador
+    assert len(r["versiones"]) == 2 and r["nota"] < 100 and r["consejos"]
+    assert "original" not in r and "12345678Z" not in json.dumps(r, ensure_ascii=False)

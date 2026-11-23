@@ -108,3 +108,14 @@ def test_el_servicio_da_la_actividad_a_la_extension(tmp_path):
     finally:
         srv.shutdown()
         srv.server_close()
+
+
+def test_cuenta_las_preguntas_mejoradas_y_su_nota_media(tmp_path):
+    escribir(tmp_path, SUCESOS + [
+        {"fecha": "2026-11-23T13:00:00", "evento": "extension_mejorar", "nota": 30, "con_ia": False},
+        {"fecha": "2026-11-23T13:05:00", "evento": "extension_mejorar", "nota": 71, "con_ia": True},
+        {"fecha": "2026-11-23T13:06:00", "evento": "extension_mejorar", "nota": "cien"},  # editado a mano: no cuenta
+    ])
+    a = leer_registro(str(tmp_path), dias=30, hoy=HOY).a_dict()
+    assert a["preguntas_mejoradas"] == 3 and a["nota_media"] == 50  # (30 + 71) / 2, redondeado
+    assert a["datos_tapados"] == 5  # mejorar no suma datos tapados: no sabemos si usaste la versión propuesta

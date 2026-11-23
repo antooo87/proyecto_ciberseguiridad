@@ -10,6 +10,7 @@ const POR_DEFECTO = {
   antesDeEnviar: true, // revisar el mensaje antes de enviarlo
   revisarTodo: false, // revisar SIEMPRE en el servicio (con --ia pilla nombres; hay que pulsar Enter dos veces)
   bloquearSinServicio: true, // si el servicio está apagado y el texto parece llevar datos, no pegarlo ni enviarlo
+  mejorarPregunta: true, // botón «✨ Mejorar» junto al cuadro del chat (y Alt+M)
 };
 const ESPERA_MS = 90000; // con --ia, el modelo local puede tardar
 
@@ -109,6 +110,8 @@ chrome.runtime.onMessage.addListener((mensaje, remitente, responder) => {
     },
     respuesta: () => guardarRespuesta(tabId, mensaje.origen || "respuesta de la IA", String(mensaje.texto || "")),
     restaurar: () => llamar("/v1/guardian/restaurar", { texto: String(mensaje.texto || "") }),
+    // Dos versiones mejores de tu pregunta, ya con tus datos tapados (con la misma bóveda que el resto del chat)
+    mejorar: () => llamar("/v1/guardian/mejorar", { texto: String(mensaje.texto || "").slice(0, 20000) }),
     nueva: async () => {
       const r = await llamar("/v1/guardian/nueva", {});
       await chrome.storage.session.clear();

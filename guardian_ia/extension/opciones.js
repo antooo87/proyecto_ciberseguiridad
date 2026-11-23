@@ -1,8 +1,8 @@
 "use strict";
 
-const CAMPOS = ["alPegar", "antesDeEnviar", "revisarTodo", "bloquearSinServicio"];
+const CAMPOS = ["alPegar", "antesDeEnviar", "revisarTodo", "bloquearSinServicio", "mejorarPregunta"];
 const POR_DEFECTO = { puerto: 8788, clave: "", alPegar: true, antesDeEnviar: true, revisarTodo: false,
-  bloquearSinServicio: true };
+  bloquearSinServicio: true, mejorarPregunta: true };
 const $ = (id) => document.getElementById(id);
 
 async function cargar() {

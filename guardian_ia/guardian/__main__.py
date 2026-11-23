@@ -7,6 +7,7 @@ Uso (desde la carpeta del proyecto, con el entorno virtual activado):
     python -m guardian chat --ia              ... y además usa la IA local para detectar nombres, direcciones,
                                               contraseñas escritas a mano y ataques en documentos
     python -m guardian proteger "texto"       enseña qué vería la IA (no necesita Ollama)
+    python -m guardian mejorar "pregunta"     te propone dos versiones mejores de tu pregunta para un chatbot
     python -m guardian aduana documento.pdf   revisa un documento (texto, Word, PowerPoint, Excel o PDF) en busca de
                                               prompt injection
     python -m guardian verificar "respuesta"  revisa una respuesta de cualquier IA (ChatGPT, Gemini...)
@@ -110,6 +111,34 @@ def cmd_proteger(args):
         print(f"{AMARILLO}! {aviso}{FIN}")
     print(f"{NEGRITA}Lo que vería la IA:{FIN}\n{resultado.protegido}\n")
     print(f"{GRIS}Tapados: {resumen(resultado.resumen())}{FIN}")
+
+
+def cmd_mejorar(args):
+    from .mejorador import Mejorador
+    texto = args.texto if args.texto else sys.stdin.read()
+    if not texto.strip():
+        print(f'{AMARILLO}Escribe tu pregunta: python -m guardian mejorar "hola, ¿me ayudas con...?"{FIN}')
+        return 1
+    cliente = _cliente_local(args.modelo_detector) if args.ia else None
+    mejora = Mejorador(_crear_escudo(args.ia, args.modelo_detector), cliente).mejorar(texto)
+    if args.json:
+        print(json.dumps(mejora.a_dict(), ensure_ascii=False, indent=2))
+        return 0
+    color = VERDE if mejora.nota >= 80 else AMARILLO if mejora.nota >= 50 else ROJO
+    print(f"{NEGRITA}Nota de tu pregunta: {color}{mejora.nota}/100{FIN}")
+    for aviso in mejora.avisos:
+        print(f"{AMARILLO}! {aviso}{FIN}")
+    if mejora.consejos:
+        print(f"{NEGRITA}Qué le falta:{FIN}")
+        for consejo in mejora.consejos:
+            print(f"  • {consejo}")
+    for n, version in enumerate(mejora.versiones, 1):
+        print(f"\n{NEGRITA}{AZUL}Opción {n} · {version.titulo}{FIN} {GRIS}({version.por_que}){FIN}")
+        print(version.texto)
+    hechas = ("reescritas por la IA de tu PC" if mejora.con_ia else
+              "hechas con reglas; añade --ia para que las reescriba la IA de tu PC")
+    print(f"\n{GRIS}Copia la que más te guste y pégala en tu chatbot ({hechas}).{FIN}")
+    return 0
 
 
 def _leer(ruta):
@@ -383,7 +412,8 @@ def cmd_proxy(args):
 def cmd_servicio(args):
     from .servicio import ServicioGuardian, ServidorServicio
     servicio = ServicioGuardian(_crear_escudo(args.ia, args.modelo_detector),
-                                _crear_aduana(args.ia, args.modelo_detector))
+                                _crear_aduana(args.ia, args.modelo_detector),
+                                cliente_mejorador=_cliente_local(args.modelo_detector) if args.ia else None)
     try:
         servidor = ServidorServicio(servicio, args.puerto, args.clave)
     except OSError as e:
@@ -548,6 +578,13 @@ def main(argv=None):
     s.add_argument("texto", nargs="?")
     s.add_argument("--ia", action="store_true")
     s.set_defaults(func=cmd_proteger)
+
+    s = sub.add_parser("mejorar", help="dos versiones mejores de tu pregunta para un chatbot (y qué le falta)")
+    s.add_argument("texto", nargs="?", help="tu pregunta (si no la pones, se lee de la entrada)")
+    s.add_argument("--ia", action="store_true", help="que la reescriba la IA de tu PC (Ollama)")
+    s.add_argument("--modelo-detector", default=None)
+    s.add_argument("--json", action="store_true", help="sacar el resultado en JSON")
+    s.set_defaults(func=cmd_mejorar)
 
     s = sub.add_parser("aduana", help="revisa un documento (texto, Word, PowerPoint, Excel o PDF) contra prompt injection")
     s.add_argument("archivo")

@@ -62,3 +62,13 @@ label.opcion input { margin-top: 4px; }
 .oculto { display: none; }
 ul.lista { margin: 0; padding-left: 18px; }
 ul.lista li { margin: 3px 0; }
+.mejora-cabecera { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.nota { display: inline-block; padding: 1px 10px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 700; }
+.nota.alta { background: var(--verde); }
+.nota.media { background: var(--amarillo); }
+.nota.baja { background: var(--rojo); }
+.version { border: 1px solid var(--borde); border-radius: 8px; padding: 8px 10px; margin-top: 8px; }
+.version h3 { font-size: 13px; margin: 0 0 2px; }
+.version .caja { max-height: 180px; margin-top: 6px; font-size: 13px; }
+kbd { font: 12px ui-monospace, monospace; border: 1px solid var(--borde); border-bottom-width: 2px; border-radius: 4px;
+  padding: 0 4px; background: var(--fondo-suave); }

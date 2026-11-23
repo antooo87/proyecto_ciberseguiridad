@@ -49,6 +49,10 @@ async function mostrarActividad() {
     }
     const acciones = suma(r.acciones_bloqueadas);
     if (acciones) frases.push(cuantos(acciones, "acción de un agente bloqueada", "acciones de agentes bloqueadas"));
+    if (r.preguntas_mejoradas) {
+      frases.push(`${cuantos(r.preguntas_mejoradas, "pregunta mejorada", "preguntas mejoradas")}` +
+        (r.nota_media !== null && r.nota_media !== undefined ? ` (nota media antes de mejorarlas: ${r.nota_media}/100)` : ""));
+    }
   }
   $("actividad").replaceChildren(...frases.map((f) => {
     const li = document.createElement("li");
@@ -142,12 +146,54 @@ $("copiar").addEventListener("click", async () => {
 $("proteger").addEventListener("click", async () => {
   const r = await pedir({ tipo: "proteger", texto: $("entrada").value });
   $("salida").classList.remove("oculto");
+  $("mejoras").classList.add("oculto");
   if (!r.ok) {
     $("salida").textContent = r.error;
     return;
   }
   $("salida").textContent = r.protegido + (r.resumen ? `\n\n(Tapados: ${r.resumen}. Ya está copiado.)` : "\n\n(Nada que tapar.)");
   await navigator.clipboard.writeText(r.protegido).catch(() => {});
+});
+
+function elemento(etiqueta, clase, texto) {
+  const n = document.createElement(etiqueta);
+  if (clase) n.className = clase;
+  if (texto !== undefined) n.textContent = texto;
+  return n;
+}
+
+$("mejorar").addEventListener("click", async () => {
+  const caja = $("mejoras");
+  caja.classList.remove("oculto");
+  $("salida").classList.add("oculto");
+  caja.replaceChildren(elemento("p", "pequeno", "Mirando tu pregunta en el Guardián de tu PC…"));
+  const r = await pedir({ tipo: "mejorar", texto: $("entrada").value });
+  if (!r.ok) {
+    caja.replaceChildren(elemento("div", "caja", r.error));
+    return;
+  }
+  const cabecera = elemento("div", "mejora-cabecera");
+  cabecera.append(elemento("span", `nota ${r.nota >= 80 ? "alta" : r.nota >= 50 ? "media" : "baja"}`, `Nota ${r.nota}/100`),
+    elemento("span", "pequeno", r.con_ia ? "reescrita por la IA de tu PC" : "hecha con reglas en tu PC"));
+  const partes = [cabecera];
+  if (r.consejos.length) {
+    const lista = elemento("ul", "pequeno lista");
+    lista.append(...r.consejos.map((c) => elemento("li", "", c)));
+    partes.push(lista);
+  }
+  r.versiones.forEach((v, i) => {
+    const bloque = elemento("div", "version");
+    const copiar = elemento("button", "", "Copiar");
+    copiar.addEventListener("click", async () => {
+      await navigator.clipboard.writeText(v.texto).catch(() => {});
+      copiar.textContent = "Copiado ✓";
+      setTimeout(() => { copiar.textContent = "Copiar"; }, 1500);
+    });
+    bloque.append(elemento("h3", "", `Opción ${i + 1} · ${v.titulo}`), elemento("div", "pequeno", v.por_que),
+      elemento("div", "caja", v.texto), copiar);
+    partes.push(bloque);
+  });
+  caja.replaceChildren(...partes);
 });
 
 $("nueva").addEventListener("click", async () => {

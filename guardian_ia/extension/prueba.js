@@ -28,6 +28,14 @@ function respuestaDeMentira(mensaje) {
     return "Según el correo, debes verificar tu cuenta en https://bbva-seguridad.example/login antes de 24 horas " +
       "para que no la bloqueen. Hazlo cuanto antes.";
   }
+  if (/me podr[ií]as ayudar con este tema|qu[eé] tal est[aá]s/i.test(mensaje)) {
+    return "¡Hola! Estoy muy bien, gracias por preguntar 😊. Claro que puedo ayudarte con este tema. Hay muchas " +
+      "formas de enfocarlo y depende mucho de lo que necesites. ¿Podrías darme más detalles sobre a qué te refieres?";
+  }
+  if (/Ve al grano|Para que tu respuesta me sirva de verdad/.test(mensaje)) {
+    return "Perfecto, ahora sé qué necesitas, cómo lo quieres y para qué. (Soy una IA de mentira: una de verdad te " +
+      "contestaría aquí al grano, sin rodeos ni preguntas de relleno.)";
+  }
   if (marcadores.length && /banco|carta|cobrad/i.test(mensaje)) {
     const dni = marcadores.find((m) => m.startsWith("[DNI")) || "(tu DNI)";
     const otros = marcadores.filter((m) => m !== dni).join(", ");

@@ -21,7 +21,7 @@ from . import config
 from .terminal import resumen
 
 DONDE = {"pregunta": "Chat", "documento_bloqueado": "Chat", "extension_proteger": "Extensión",
-         "extension_restaurar": "Extensión", "proxy": "Agentes"}
+         "extension_restaurar": "Extensión", "extension_mejorar": "Extensión", "proxy": "Agentes"}
 NIVELES_RESPUESTA = ("OK", "AVISO", "PELIGRO")
 MAX_ULTIMOS = 25
 
@@ -75,6 +75,8 @@ class Actividad:
     avisos: Counter = field(default_factory=Counter)  # tipo de aviso -> cuántas veces
     acciones_bloqueadas: Counter = field(default_factory=Counter)  # herramienta del agente -> cuántas veces
     resultados_bloqueados: int = 0
+    preguntas_mejoradas: int = 0
+    notas: list = field(default_factory=list)  # nota (0-100) de cada pregunta antes de mejorarla
     por_dia: dict = field(default_factory=dict)  # "2026-11-23" -> {"datos": n, "alertas": n}
     ultimos: list = field(default_factory=list)  # lo último importante, lo más reciente primero
 
@@ -106,6 +108,8 @@ class Actividad:
             "avisos": [{"tipo": t, "que": AVISOS.get(t, t), "veces": n} for t, n in self.avisos.most_common()],
             "acciones_bloqueadas": dict(self.acciones_bloqueadas.most_common()),
             "resultados_bloqueados": self.resultados_bloqueados, "alertas": self.alertas,
+            "preguntas_mejoradas": self.preguntas_mejoradas,
+            "nota_media": round(sum(self.notas) / len(self.notas)) if self.notas else None,
             "por_dia": self.por_dia, "ultimos": self.ultimos,
         }
 
@@ -200,6 +204,11 @@ def leer_registro(carpeta: Optional[str] = None, dias: Optional[int] = 30, hoy: 
             if isinstance(accion, str):
                 actividad.acciones_bloqueadas[accion] += 1
         actividad.resultados_bloqueados += _numero(suceso.get("resultados_bloqueados"))
+        if evento == "extension_mejorar":
+            actividad.preguntas_mejoradas += 1
+            nota = suceso.get("nota")
+            if isinstance(nota, int) and not isinstance(nota, bool) and 0 <= nota <= 100:
+                actividad.notas.append(nota)
 
         partes = _que_paso(suceso, datos, avisos)
         dia = actividad.por_dia.setdefault(fecha.date().isoformat(), {"datos": 0, "alertas": 0})

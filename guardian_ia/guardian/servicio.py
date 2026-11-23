@@ -9,6 +9,7 @@ a este pequeño servidor que corre en tu PC:
     POST /v1/guardian/proteger   {"texto": ...}  -> tapa los datos (y pasa la aduana si es un texto largo)
     POST /v1/guardian/restaurar  {"texto": ...}  -> vuelve a poner tus datos (nunca dentro de enlaces)
                                                     y revisa la respuesta con el verificador
+    POST /v1/guardian/mejorar    {"texto": ...}  -> dos versiones mejores de tu pregunta (ya con los datos tapados)
     POST /v1/guardian/nueva                      -> vacía la bóveda
     GET  /v1/guardian/actividad                  -> lo que ha hecho esta semana (del registro, sin datos)
     GET  /salud                                  -> ¿está encendido?
@@ -39,6 +40,7 @@ from . import __version__
 from .actividad import leer_registro
 from .aduana import Aduana
 from .escudo import Boveda, Escudo
+from .mejorador import Mejorador
 from .registro import Registro
 from .terminal import resumen
 from .verificador import Verificador, neutralizar_imagenes
@@ -75,11 +77,13 @@ class ServicioGuardian:
     """La lógica, separada del servidor HTTP para poder probarla sin red."""
 
     def __init__(self, escudo: Optional[Escudo] = None, aduana: Optional[Aduana] = None,
-                 verificador: Optional[Verificador] = None, registro: Optional[Registro] = None):
+                 verificador: Optional[Verificador] = None, registro: Optional[Registro] = None,
+                 cliente_mejorador=None):
         self.escudo = escudo or Escudo()
         self.aduana = aduana or Aduana()
         self.verificador = verificador or Verificador()
         self.registro = registro or Registro()
+        self.mejorador = Mejorador(self.escudo, cliente_mejorador, self.aduana)
         self.boveda = Boveda()
         self.pegados: deque[str] = deque(maxlen=MAX_PEGADOS)  # lo último que has pegado, ya tapado
         self._cerrojo = threading.Lock()  # varias pestañas a la vez: la bóveda se toca de una en una
@@ -114,6 +118,13 @@ class ServicioGuardian:
         return {"texto": restaurado, "nivel": verificacion.nivel,
                 "hallazgos": [{"gravedad": h.gravedad, "explicacion": h.explicacion, "fragmento": h.fragmento}
                               for h in verificacion.hallazgos if h.gravedad != "INFO"]}
+
+    def mejorar(self, texto: str) -> dict:
+        """Dos versiones mejores de la pregunta, con los datos tapados con la misma bóveda que el resto de la
+        conversación (el mismo DNI es siempre [DNI_1])."""
+        mejora = self.mejorador.mejorar(texto, self.boveda, self._cerrojo)
+        self.registro.apuntar("extension_mejorar", nota=mejora.nota, con_ia=mejora.con_ia)
+        return mejora.a_dict()
 
     def nueva(self) -> dict:
         with self._cerrojo:
@@ -218,6 +229,9 @@ class _Manejador(BaseHTTPRequestHandler):
         elif ruta == "/v1/guardian/restaurar":
             respuesta = servicio.restaurar(texto)
             self._resumen = f"respuesta revisada: {respuesta['nivel']}"
+        elif ruta == "/v1/guardian/mejorar":
+            respuesta = servicio.mejorar(texto)
+            self._resumen = f"pregunta mejorada: nota {respuesta['nota']}/100"
         elif ruta == "/v1/guardian/nueva":
             respuesta = servicio.nueva()
             self._resumen = "bóveda vaciada"

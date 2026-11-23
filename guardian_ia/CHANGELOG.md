@@ -4,6 +4,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## [Sin publicar]
 
+### Añadido
+- **«✨ Mejorar mi pregunta»** (`guardian/mejorador.py`): te dice qué le falta a lo que le vas a preguntar a una IA (qué quieres que haga, de qué se trata, para qué, cómo quieres la respuesta), le pone nota de 0 a 100 y te propone dos versiones para elegir: **Directa** (al grano, para que la IA no se vaya por las ramas) y **Completa** (con formato, nivel y que no se invente nada). Distingue si preguntas algo, si quieres que te escriba algo o si te ha pasado algo (entonces pide lo urgente primero y lo que NO debes hacer). Trabaja siempre con tus datos ya tapados y deja huecos «escribe aquí...» en vez de inventarse lo que falta. Sin IA funciona con reglas; con `--ia`, la reescribe la IA local y se comprueba lo que devuelve (si cambia tus datos o se alarga demasiado, se queda la versión de reglas). Nunca usa una IA remota. Está en la terminal (`python -m guardian mejorar "..."`), en el servicio (`POST /v1/guardian/mejorar`), en la web y en la extensión: botón «✨ Mejorar» encima del cuadro del chat o `Alt+M`, con las propuestas dentro de un shadow root cerrado que la web no puede leer y el hueco del tema ya seleccionado al elegir una. También en el panel lateral y en la actividad («N preguntas mejoradas»).
+- **Web con portada y menú**: la web pasa de pestañas a páginas con una portada («¿Qué quieres hacer?», lo que ha hecho esta semana y si el servicio de la extensión está encendido) y un menú lateral agrupado: antes de preguntar, lo que le das o te da la IA y tu PC. Los ajustes de la IA van plegados.
+- **Nombres que entiende cualquiera** para los tipos de dato (`guardian/tipos.py`): «1 DNI y 2 teléfonos» en vez de «1 DNI, 2 TELEFONO» en los avisos, el informe y la extensión.
+
 ## [0.4.0] - 2026-11-23
 
 Entrega final: el Guardián sale de la terminal. Funciona dentro de las webs de los chatbots, se instala con un comando y cuenta lo que ha hecho.
