@@ -10,6 +10,7 @@ a este pequeño servidor que corre en tu PC:
     POST /v1/guardian/restaurar  {"texto": ...}  -> vuelve a poner tus datos (nunca dentro de enlaces)
                                                     y revisa la respuesta con el verificador
     POST /v1/guardian/nueva                      -> vacía la bóveda
+    GET  /v1/guardian/actividad                  -> lo que ha hecho esta semana (del registro, sin datos)
     GET  /salud                                  -> ¿está encendido?
 
 La bóveda (qué dato hay detrás de cada [DNI_1]) vive solo en la memoria de este
@@ -35,6 +36,7 @@ from typing import Optional
 from urllib.parse import urlparse
 
 from . import __version__
+from .actividad import leer_registro
 from .aduana import Aduana
 from .escudo import Boveda, Escudo
 from .registro import Registro
@@ -119,6 +121,12 @@ class ServicioGuardian:
             self.pegados.clear()
         return {"ok": True}
 
+    def actividad(self, dias: int = 7) -> dict:
+        """Resumen del registro para el panel de la extensión (solo cuántos y de qué tipo, nunca los datos)."""
+        resumen_registro = leer_registro(self.registro.carpeta, dias).a_dict()
+        resumen_registro["ultimos"] = resumen_registro["ultimos"][:5]
+        return resumen_registro
+
 
 class _Manejador(BaseHTTPRequestHandler):
     server_version = "GuardianIA"
@@ -164,10 +172,15 @@ class _Manejador(BaseHTTPRequestHandler):
 
     def do_GET(self):
         self._resumen = ""
-        if urlparse(self.path).path.rstrip("/") not in ("", "/salud"):
+        ruta = urlparse(self.path).path.rstrip("/")
+        if ruta not in ("", "/salud", "/v1/guardian/actividad"):
             self._json(404, {"error": "No existe"})
             return
         if not self._permitido():
+            return
+        if ruta == "/v1/guardian/actividad":
+            self._resumen = "actividad de la semana"
+            self._json(200, self.server.servicio.actividad())
             return
         self._json(200, {"ok": True, "guardian": True, "version": __version__,
                          "ia_local": self.server.servicio.escudo.detector_ia is not None})

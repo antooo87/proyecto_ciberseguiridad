@@ -14,6 +14,7 @@ import tempfile
 import streamlit as st
 
 from guardian import __version__, config
+from guardian.actividad import AVISOS, leer_registro
 from guardian.aduana import Aduana, ErrorLectura, Lectura, leer
 from guardian.escudo import Escudo
 from guardian.ia import ClienteIA, ErrorIA, crear_cliente
@@ -129,11 +130,14 @@ with st.sidebar:
         st.info("La IA está fuera de tu PC: solo recibirá el texto con los datos tapados.")
     st.divider()
     st.markdown("**Módulos**\n\n1. ✅ Escudo de datos\n2. ✅ Verificador de respuestas\n"
-                "3. ✅ Aduana de documentos\n4. ✅ Revisor de la IA del PC")
+                "3. ✅ Aduana de documentos\n4. ✅ Revisor de la IA del PC\n\n"
+                "**Fuera de esta web:** extensión del navegador (ChatGPT, Claude, Gemini...), proxy para agentes "
+                "y programas, y `python -m guardian informe`.")
 
 pestanas = st.tabs(["🔍 Probar el escudo", "💬 Chat protegido", "🛃 Aduana de documentos",
-                    "📁 Revisar una carpeta", "✅ Verificar una respuesta", "🩺 Revisar mi PC", "📊 Resultados"])
-tab_escudo, tab_chat, tab_aduana, tab_carpeta, tab_verificar, tab_revisar, tab_resultados = pestanas
+                    "📁 Revisar una carpeta", "✅ Verificar una respuesta", "🩺 Revisar mi PC", "📈 Actividad",
+                    "📊 Resultados"])
+tab_escudo, tab_chat, tab_aduana, tab_carpeta, tab_verificar, tab_revisar, tab_actividad, tab_resultados = pestanas
 
 # ---------------- 1. Probar el escudo ----------------
 with tab_escudo:
@@ -330,7 +334,89 @@ with tab_revisar:
             st.success("No he encontrado nada raro. ¡Bien!")
         st.download_button("Descargar el informe (.md)", informe.a_markdown(), "informe_revision_ia.md")
 
-# ---------------- 6. Resultados ----------------
+# ---------------- 6. Actividad ----------------
+def azul_de_los_graficos():
+    """Un solo azul para las barras (más claro si la web está en modo oscuro)."""
+    try:
+        return "#3987e5" if st.context.theme.type == "dark" else "#2a78d6"
+    except AttributeError:  # Streamlit antiguo
+        return "#2a78d6"
+
+
+def grafico_barras(filas, campo, valor, horizontal):
+    import altair as alt
+    marca = alt.Chart(alt.Data(values=filas)).mark_bar(
+        color=azul_de_los_graficos(), cornerRadiusEnd=4, size=18 if horizontal else 22)
+    eje_valor = alt.X if horizontal else alt.Y
+    eje_campo = alt.Y if horizontal else alt.X
+    return marca.encode(
+        eje_valor(f"{valor}:Q", title=None, axis=alt.Axis(tickMinStep=1, format="d", gridOpacity=0.35)),
+        eje_campo(f"{campo}:N" if horizontal else f"{campo}:O", title=None, sort="-x" if horizontal else None,
+                  axis=alt.Axis(labelAngle=0, ticks=False, domain=False)),
+        tooltip=[alt.Tooltip(f"{campo}:N"), alt.Tooltip(f"{valor}:Q")],
+    ).properties(height=max(120, 30 * len(filas)) if horizontal else 220).configure_view(stroke=None)
+
+
+with tab_actividad:
+    st.subheader("Lo que ha hecho el Guardián por ti")
+    st.caption(f"Leído del registro de este PC (carpeta {config.CARPETA_REGISTRO}/). El registro nunca guarda tus "
+               "datos: solo cuántos se taparon y de qué tipo. Se llena al usar el chat protegido, la extensión del "
+               "navegador o el proxy. En la terminal: python -m guardian informe")
+    periodo = st.radio("Periodo", ["Hoy", "7 días", "30 días", "Todo"], index=2, horizontal=True,
+                       label_visibility="collapsed")
+    actividad = leer_registro(dias={"Hoy": 1, "7 días": 7, "30 días": 30, "Todo": None}[periodo])
+    if not actividad.sucesos:
+        st.info("Todavía no hay nada en este periodo. Usa el chat protegido o la extensión del navegador y vuelve.")
+    else:
+        r = actividad.respuestas
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Datos tapados", actividad.datos_tapados,
+                  help=f"Datos personales que no han llegado a la IA, en {actividad.mensajes_con_datos} mensajes.")
+        c2.metric("Documentos con trampas", actividad.documentos_con_trampa,
+                  help=f"{actividad.documentos_bloqueados} bloqueados y el resto desinfectados antes de dárselos "
+                       "a la IA (órdenes ocultas, texto invisible...).")
+        c3.metric("Respuestas con peligro", r["PELIGRO"],
+                  help=f"De {sum(r.values())} respuestas revisadas: {r['OK']} sin nada raro, {r['AVISO']} con "
+                       f"avisos y {r['PELIGRO']} con peligros.")
+        c4.metric("Acciones de agentes bloqueadas", sum(actividad.acciones_bloqueadas.values()),
+                  help=f"Más {actividad.resultados_bloqueados} resultados de herramientas con trampa que no se le "
+                       "dieron a la IA.")
+        izq, der = st.columns(2)
+        with izq:
+            st.markdown("**Datos tapados, por tipo**")
+            if actividad.datos:
+                filas = [{"Tipo": t, "Datos": n} for t, n in actividad.datos.most_common()]
+                st.altair_chart(grafico_barras(filas, "Tipo", "Datos", horizontal=True), width="stretch")
+                with st.expander("Ver como tabla"):
+                    st.dataframe(filas, hide_index=True, width="stretch")
+            else:
+                st.caption("Ningún dato tapado en este periodo.")
+        with der:
+            st.markdown("**Avisos en las respuestas de la IA**")
+            if actividad.avisos:
+                st.dataframe([{"Aviso": AVISOS.get(t, t), "Veces": n} for t, n in actividad.avisos.most_common()],
+                             hide_index=True, width="stretch")
+            else:
+                st.caption("Ninguna respuesta con avisos en este periodo.")
+            if actividad.acciones_bloqueadas:
+                st.markdown("**Acciones de agentes bloqueadas**")
+                st.dataframe([{"Herramienta": h, "Veces": n} for h, n in actividad.acciones_bloqueadas.most_common()],
+                             hide_index=True, width="stretch")
+        if len(actividad.por_dia) > 1:
+            st.markdown("**Datos tapados, por día**")
+            filas = [{"Día": dia[8:10] + "/" + dia[5:7], "Datos": v["datos"]} for dia, v in actividad.por_dia.items()]
+            st.altair_chart(grafico_barras(filas, "Día", "Datos", horizontal=False), width="stretch")
+        st.markdown("**Lo último importante**")
+        st.dataframe([{"Cuándo": u["fecha"][8:10] + "/" + u["fecha"][5:7] + " " + u["fecha"][11:16],
+                       "Dónde": u["donde"], "Qué ha pasado": ("🔴 " if u["grave"] else "") + u["que"]}
+                      for u in actividad.ultimos], hide_index=True, width="stretch",
+                     column_config={"Cuándo": st.column_config.TextColumn(width=110),
+                                    "Dónde": st.column_config.TextColumn(width=90),
+                                    "Qué ha pasado": st.column_config.TextColumn(width=900)})
+        if actividad.lineas_rotas:
+            st.warning(f"{actividad.lineas_rotas} líneas del registro no se han podido leer (¿editadas a mano?).")
+
+# ---------------- 7. Resultados ----------------
 with tab_resultados:
     st.subheader("Cómo de bien funciona: evaluación con textos etiquetados")
     st.caption("Se generan con: python -m guardian evaluar  (y con --ia para la versión con IA)")
@@ -380,6 +466,13 @@ with tab_resultados:
         st.caption("Se genera con: python evaluacion/resumir_agente.py (a partir de los registros de evaluacion/agente/)")
         with open(agente, encoding="utf-8") as f:
             st.markdown(f.read().split("\n", 1)[1].replace("## Trampa", "##### Trampa"))  # sin el título del archivo
+    eco = os.path.join(carpeta, "eco_resultados.md")
+    if os.path.exists(eco):
+        st.markdown("#### Eco de la trampa: ¿avisa cuando la IA repite lo que pedía la trampa?")
+        st.caption("Se genera con: python evaluacion/medir_eco.py (sin llamar a ninguna IA, sobre las respuestas "
+                   "guardadas del ataque al agente)")
+        with open(eco, encoding="utf-8") as f:
+            st.markdown(f.read().split("\n", 1)[1].split("\n## Frases marcadas")[0])  # sin las frases, que son largas
     informe_completo = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "evaluacion.md")
     if os.path.exists(informe_completo):
         with st.expander("Informe completo: método, conjuntos públicos y ataque a un agente (docs/evaluacion.md)"):

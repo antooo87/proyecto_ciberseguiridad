@@ -12,6 +12,7 @@ Uso (desde la carpeta del proyecto, con el entorno virtual activado):
     python -m guardian verificar "respuesta"  revisa una respuesta de cualquier IA (ChatGPT, Gemini...)
     python -m guardian revisar                revisa la IA instalada en tu PC (añade --demo para un PC de prueba)
     python -m guardian proxy                  pone el Guardián delante de cualquier programa que use la IA
+    python -m guardian informe                lo que ha hecho el Guardián estos días (sin enseñar ningún dato)
     python -m guardian evaluar                mide el escudo y la aduana con los textos de prueba
 """
 
@@ -417,6 +418,61 @@ def cmd_evaluar(args):
     return evaluar_todo(con_ia=args.ia, modelo=args.modelo_detector, limite=args.limite, conjunto=args.conjunto)
 
 
+def cmd_informe(args):
+    from datetime import datetime
+
+    from .actividad import AVISOS, leer_registro
+    actividad = leer_registro(args.carpeta, args.dias)
+    if args.json:
+        print(json.dumps(actividad.a_dict(), ensure_ascii=False, indent=2))
+        return 0
+    periodo = f"los últimos {args.dias} días" if args.dias else "todo el registro"
+    if not actividad.sucesos:
+        print(f"Todavía no hay nada en el registro ({periodo}, carpeta {actividad.carpeta}). Se llena al usar el "
+              "chat, la extensión del navegador o el proxy.")
+        return 0
+    donde = " · ".join(f"{d} {n}" for d, n in actividad.donde.most_common())
+    print(f"{NEGRITA}Lo que ha hecho el Guardián{FIN} del {actividad.desde:%d/%m/%Y} al {actividad.hasta:%d/%m/%Y} "
+          f"{GRIS}({periodo}: {actividad.sucesos} sucesos · {donde}){FIN}")
+    print(f"{GRIS}Leído de {actividad.carpeta}/: el registro nunca guarda tus datos, solo cuántos y de qué tipo.{FIN}\n")
+
+    print(f"{NEGRITA}Datos tapados antes de llegar a la IA:{FIN} {VERDE}{actividad.datos_tapados}{FIN}"
+          + (f" en {actividad.mensajes_con_datos} mensajes" if actividad.datos else ""))
+    if actividad.datos:
+        ancho, maximo = max(map(len, actividad.datos)), max(actividad.datos.values())
+        for tipo, n in actividad.datos.most_common():
+            print(f"  {tipo:<{ancho}} {n:>5}  {AZUL}{'█' * max(1, round(24 * n / maximo))}{FIN}")
+
+    trampas = actividad.documentos_con_trampa
+    print(f"{NEGRITA}Documentos o textos pegados con trampas:{FIN} "
+          + (f"{ROJO}{trampas}{FIN} ({actividad.documentos_bloqueados} bloqueados, "
+             f"{trampas - actividad.documentos_bloqueados} desinfectados antes de dárselos a la IA)" if trampas
+             else f"{VERDE}ninguno{FIN}"))
+
+    r = actividad.respuestas
+    if sum(r.values()):
+        print(f"{NEGRITA}Respuestas de la IA revisadas:{FIN} {sum(r.values())} · {VERDE}{r['OK']} OK{FIN} · "
+              f"{AMARILLO}{r['AVISO']} AVISO{FIN} · {ROJO}{r['PELIGRO']} PELIGRO{FIN}")
+        for tipo, n in actividad.avisos.most_common(8):
+            print(f"  {AMARILLO}▲{FIN} {n} × {AVISOS.get(tipo, tipo)}")
+
+    if actividad.acciones_bloqueadas or actividad.resultados_bloqueados:
+        acciones = ", ".join(f"{h} ×{n}" for h, n in actividad.acciones_bloqueadas.most_common())
+        print(f"{NEGRITA}Agentes:{FIN} {ROJO}{sum(actividad.acciones_bloqueadas.values())} acciones bloqueadas{FIN}"
+              + (f" ({acciones})" if acciones else "")
+              + f" · {actividad.resultados_bloqueados} resultados de herramienta con trampa que no se le dieron a la IA")
+
+    if actividad.ultimos and args.ultimos:
+        print(f"\n{NEGRITA}Lo último importante:{FIN}")
+        for u in actividad.ultimos[:args.ultimos]:
+            fecha = datetime.fromisoformat(u["fecha"])
+            print(f"  {GRIS}{fecha:%d/%m %H:%M}{FIN}  {u['donde']:<10}{ROJO if u['grave'] else ''}{u['que']}{FIN}")
+    if actividad.lineas_rotas:
+        print(f"\n{AMARILLO}! {actividad.lineas_rotas} líneas del registro no se han podido leer "
+              f"(¿editadas a mano?).{FIN}")
+    return 0
+
+
 def main(argv=None):
     # Si la salida va a un archivo o a una tubería en Windows (cp1252), los símbolos (●, 🛑...) no caben:
     # mejor un "?" que un error.
@@ -530,6 +586,13 @@ def main(argv=None):
     s.add_argument("--modelo-detector", default=None)
     s.add_argument("--ocultar-clave", action="store_true", help="no enseñar la clave (por ejemplo, en una presentación)")
     s.set_defaults(func=cmd_servicio)
+
+    s = sub.add_parser("informe", help="lo que ha hecho el Guardián estos días: datos tapados, trampas y avisos")
+    s.add_argument("--dias", type=int, default=30, help="cuántos días mirar (0 = todo el registro; por defecto 30)")
+    s.add_argument("--carpeta", default=None, help=f"carpeta del registro (por defecto {config.CARPETA_REGISTRO})")
+    s.add_argument("--ultimos", type=int, default=10, help="cuántos sucesos recientes enseñar (0 = ninguno)")
+    s.add_argument("--json", action="store_true", help="sacar el resumen en JSON")
+    s.set_defaults(func=cmd_informe)
 
     s = sub.add_parser("evaluar", help="mide el Guardián con los textos de prueba")
     s.add_argument("--ia", action="store_true", help="incluir la detección con IA (necesita Ollama; tarda)")

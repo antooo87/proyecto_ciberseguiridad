@@ -26,6 +26,29 @@ async function comprobarServicio() {
   $("estado-texto").textContent = r.ok
     ? `Conectado al Guardián ${r.version} de tu PC${r.ia_local ? " · con IA local" : " · solo reglas"}`
     : r.error;
+  if (r.ok) mostrarActividad();
+}
+
+// Lo que ha hecho el Guardián esta semana (del registro de tu PC, que solo guarda cuántos y de qué tipo)
+async function mostrarActividad() {
+  const r = await pedir({ tipo: "actividad" });
+  if (!r.ok) return;
+  const suma = (o) => Object.values(o || {}).reduce((a, b) => a + b, 0);
+  const frases = [];
+  if (!r.sucesos) frases.push("Todavía no ha tenido que hacer nada.");
+  else {
+    frases.push(`${r.datos_tapados} datos personales tapados antes de llegar a la IA`);
+    if (r.documentos_con_trampa) frases.push(`${r.documentos_con_trampa} textos o documentos con trampas desinfectados`);
+    if (r.respuestas.PELIGRO || r.respuestas.AVISO) {
+      frases.push(`${r.respuestas.PELIGRO} respuestas con peligro y ${r.respuestas.AVISO} con aviso`);
+    }
+    if (suma(r.acciones_bloqueadas)) frases.push(`${suma(r.acciones_bloqueadas)} acciones de agentes bloqueadas`);
+  }
+  $("actividad").replaceChildren(...frases.map((f) => {
+    const li = document.createElement("li");
+    li.textContent = f;
+    return li;
+  }));
 }
 
 function pintar(ultima) {

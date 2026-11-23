@@ -339,6 +339,9 @@ class ProxyGuardian:
                                       key=["OK", "AVISO", "PELIGRO"].index)
         alertas = [h.explicacion for h in verificacion.hallazgos if h.gravedad == "PELIGRO"]
         informe["avisos"] += [h.explicacion for h in verificacion.hallazgos if h.gravedad != "INFO"]
+        for h in verificacion.hallazgos:
+            if h.gravedad != "INFO":  # para el registro: solo el tipo, nunca el texto
+                informe["avisos_respuesta"][h.tipo] = informe["avisos_respuesta"].get(h.tipo, 0) + 1
 
         llamadas, bloqueadas = [], []
         for i, llamada in enumerate(mensaje.get("tool_calls") or []):
@@ -426,7 +429,7 @@ class ProxyGuardian:
         boveda = Boveda()
         informe: dict[str, Any] = {"datos_tapados": {}, "herramientas_revisadas": 0, "resultados_bloqueados": 0,
                                    "contaminado": False, "verificacion": "OK", "acciones_bloqueadas": [],
-                                   "avisos": [], "reintentos": 0, "acciones_aceptadas": [],
+                                   "avisos": [], "avisos_respuesta": {}, "reintentos": 0, "acciones_aceptadas": [],
                                    "sospechosos": [], "tapados": []}
         originales = [m for m in cuerpo["messages"] if isinstance(m, dict)]
         texto_tuyo = "\n".join(_textos(m.get("content")) for m in originales if m.get("role") in ROLES_DE_CONFIANZA)
@@ -467,7 +470,8 @@ class ProxyGuardian:
                               herramientas_revisadas=informe["herramientas_revisadas"],
                               resultados_bloqueados=informe["resultados_bloqueados"],
                               acciones_bloqueadas=[a["herramienta"] for a in informe["acciones_bloqueadas"]],
-                              verificacion=informe["verificacion"], reintentos=informe["reintentos"],
+                              verificacion=informe["verificacion"], avisos_respuesta=informe["avisos_respuesta"],
+                              reintentos=informe["reintentos"],
                               segundos=informe["segundos"])
         return datos
 

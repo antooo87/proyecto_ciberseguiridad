@@ -196,6 +196,10 @@ function comprobar(cond, texto) {
   const textoPanel = await panel.textContent("#texto");
   console.log("panel texto:", textoPanel.slice(0, 200));
   comprobar(textoPanel.includes("Según el correo"), "el panel abierto en pestaña enseña la última respuesta");
+  const semana = await panel.textContent("#actividad");
+  console.log("esta semana:", semana);
+  comprobar(/\d+ datos personales tapados/.test(semana) && /respuestas con peligro/.test(semana),
+    "el panel enseña lo que ha hecho el Guardián esta semana (sin datos)");
   // Lo que hace el botón «Leer la última respuesta» con la página de prueba
   const porTabs = await panel.evaluate((t) => new Promise((r) => chrome.tabs.sendMessage(t, { tipo: "ultima_respuesta" },
     (x) => r(chrome.runtime.lastError ? "error: " + chrome.runtime.lastError.message : x))), tabId);

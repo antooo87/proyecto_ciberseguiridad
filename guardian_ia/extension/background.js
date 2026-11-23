@@ -97,6 +97,11 @@ chrome.runtime.onMessage.addListener((mensaje, remitente, responder) => {
       return { opciones: resto, configurada: Boolean(clave) };
     },
     salud: () => llamar("/salud"),
+    // Resumen de la semana (sin datos): solo para las páginas de la propia extensión, no para las webs
+    actividad: async () => {
+      if (!String(remitente.url || "").startsWith(chrome.runtime.getURL(""))) throw new Error("Solo para el panel");
+      return llamar("/v1/guardian/actividad");
+    },
     proteger: async () => {
       const r = await llamar("/v1/guardian/proteger", { texto: String(mensaje.texto || ""), pegado: mensaje.pegado === true });
       await contar(remitente.tab?.id, r.datos);
