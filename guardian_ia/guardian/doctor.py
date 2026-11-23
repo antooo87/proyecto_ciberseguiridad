@@ -22,7 +22,7 @@ LIBRERIAS = [
     ("ollama", "ollama", "hablar con Ollama", True),
     ("httpx", "httpx", "el proxy y las APIs tipo OpenAI", True),
     ("pdfminer.high_level", "pdfminer.six", "leer PDF", True),
-    ("defusedxml.ElementTree", "defusedxml", "leer Word de forma segura", False),
+    ("defusedxml.ElementTree", "defusedxml", "leer Word, PowerPoint y Excel de forma segura", False),
     ("streamlit.proto.RootContainer_pb2", "streamlit", "la web (guardian web)", False),
     ("pytest", "pytest", "las pruebas automáticas", False),
 ]

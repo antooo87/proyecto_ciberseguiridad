@@ -23,9 +23,12 @@ están las reglas, la bóveda y la IA local. Así tus datos no salen del ordenad
 4. Pulsa **Cargar descomprimida** y elige esta carpeta (`guardian_ia/extension`).
 5. Se abren las opciones: pega la clave y pulsa **Guardar y probar**. Debe salir «Conectado».
 
-Para probarla sin cuenta ni Internet: icono de la extensión → **Página de prueba**. Es un chat de mentira con tres
-textos de ejemplo (datos personales, una factura con trampa y una petición de «arreglo» que la IA contesta con un
-comando peligroso).
+Para probarla sin cuenta ni Internet: icono de la extensión → **Página de prueba**. Es un chat de mentira con cuatro
+textos de ejemplo: datos personales, una factura con trampa, una petición de «arreglo» que la IA contesta con un
+comando peligroso y un correo falso del «banco» cuya orden la IA repite (el Guardián avisa del eco de la trampa).
+
+Con el instalador de Windows (`instalar.ps1`) el servicio se arranca con `.\guardian servicio`, sin activar nada.
+En el panel lateral, «Esta semana» resume lo que ha hecho el Guardián (sin enseñar ningún dato).
 
 ## Por qué es segura
 

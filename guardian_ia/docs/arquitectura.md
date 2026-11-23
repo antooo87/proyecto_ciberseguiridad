@@ -68,6 +68,40 @@ Muchos programas hablan con la IA en el formato de OpenAI. Con `python -m guardi
 - **Seguir tras un bloqueo**: si se bloquean todas las acciones de una respuesta, el proxy se lo cuenta a la IA (como si fuera el resultado de la herramienta: "esta acción NO se ha hecho porque...") y le pide que conteste sin ellas, sin volver a ofrecerle esas herramientas. Así el ataque no funciona y el usuario recibe lo que pidió. Solo hay una segunda oportunidad, y pasa por los mismos controles.
 - **Control del flujo de datos**: una acción no puede mandar nada a una dirección de correo que la IA ha sacado de lo que ha leído (una web, un archivo), y tus datos solo pueden ir a destinos (correos o webs) que aparecen en tus mensajes. Esta capa no depende de detectar el ataque: funciona aunque la trampa no use ninguna frase conocida. Se añadió después de ver en el experimento del agente que, con solo reglas, una trampa nueva pasaba la aduana (ver `evaluacion.md`).
 
+## Extensión del navegador: el Guardián dentro de ChatGPT, Claude, Gemini...
+
+```mermaid
+flowchart LR
+    subgraph WEB["Web del chatbot (chatgpt.com, claude.ai...)"]
+        CS["Script de la extensión<br/>(pegar, Enter, respuestas)"]
+    end
+    subgraph EXT["Extensión (no la ve la web)"]
+        BG["Trabajador de fondo<br/>(única pieza con la clave)"]
+        PANEL["Panel lateral<br/>(respuesta con tus datos reales)"]
+    end
+    subgraph PC["Guardián en 127.0.0.1:8788 (guardian servicio)"]
+        S["aduana → escudo (bóveda)<br/>verificador → restaurar → registro"]
+    end
+    CS -->|"texto pegado o escrito"| BG
+    BG -->|"Bearer clave"| S
+    S -->|"texto con [DNI_1]..."| BG
+    BG -->|"solo el texto tapado"| CS
+    CS -->|"respuesta de la IA"| BG
+    BG -->|"respuesta revisada,<br/>con tus datos"| PANEL
+```
+
+La extensión no tapa nada por sí misma: se lo pide al **servicio local** (`python -m guardian servicio`), que usa el mismo escudo, aduana y verificador que el resto del programa y guarda la bóveda en su memoria. Así hay una sola fuente de verdad y la IA local se puede usar también desde el navegador (`--ia`).
+
+- **Al pegar** un texto, se pega ya tapado; si es largo, pasa además por la aduana y se pega solo lo que se ve. Lo pegado se recuerda (ya tapado) para buscar en la respuesta el **eco de la trampa**.
+- **Antes de enviar** (Enter o el botón), si el texto parece llevar datos se tapa y hay que volver a pulsar, para que puedas revisarlo.
+- **La respuesta** de la IA se manda al servicio, que la revisa y le vuelve a poner tus datos. Solo la ve el panel lateral de la extensión: la web del chatbot no puede leer las páginas de una extensión.
+- **Fallo cerrado**: con el servicio apagado, lo que parece llevar datos no se pega ni se envía (la extensión tiene una copia de las reglas para darse cuenta).
+- La web nunca ve la clave del servicio: solo la guarda el trabajador de fondo, y las páginas solo reciben texto ya tapado. El servicio solo atiende a extensiones (cabecera Origin), en 127.0.0.1 y con clave.
+
+## Panel de actividad
+
+El registro (`registro/guardian_AAAA-MM-DD.jsonl`) apunta cada suceso del chat, la extensión y el proxy con **cuántos datos de cada tipo** se taparon, el riesgo de los documentos, el nivel y el tipo de los avisos de la respuesta y las acciones bloqueadas. Nunca guarda el dato ni el texto. `guardian/actividad.py` lo resume para tres sitios: `python -m guardian informe`, la pestaña "📈 Actividad" de la web y «Esta semana» en el panel de la extensión (`GET /v1/guardian/actividad`, solo para las páginas de la propia extensión).
+
 ## Qué ve cada pieza con IA
 
 | Pieza | Modelo | Dónde | Qué recibe | Qué devuelve | Si falla |
@@ -83,19 +117,29 @@ Las tres primeras piezas usan **salida estructurada** (el modelo está obligado 
 
 ```
 guardian/
-  __main__.py      programa de terminal: estado, chat, proteger, aduana, verificar, revisar, proxy, evaluar
+  __main__.py      programa de terminal: doctor, estado, chat, proteger, aduana, verificar, revisar, escanear,
+                   anonimizar, proxy, servicio, web, informe, evaluar, demo
   config.py        ajustes por variables de entorno
   ia.py            clientes de IA (Ollama, Ollama Cloud, API OpenAI) y regla "lo sensible, solo local"
   nucleo.py        el flujo de la figura de arriba
   proxy.py         modo proxy compatible con OpenAI y control de acciones
+  servicio.py      servicio local para la extensión del navegador (127.0.0.1:8788, con clave)
   registro.py      auditoría en JSONL sin datos
+  actividad.py     resumen del registro (informe, pestaña Actividad, panel de la extensión)
+  escaner.py       revisar carpetas y anonimizar documentos
+  doctor.py        comprueba la instalación y dice cómo arreglarla
   evaluacion.py    medición con los conjuntos propios
   escudo/          validadores.py, detectores.py (reglas), detector_ia.py, escudo.py (tapar y restaurar)
-  aduana/          aduana.py (reglas), lectores.py (Word y PDF), juez_ia.py, muestras.py (documentos de prueba)
-  verificador/     salida.py (comandos, exfiltración), enlaces.py, respaldo.py, verificador.py
+  aduana/          aduana.py (reglas), lectores.py (Word, PowerPoint, Excel y PDF), juez_ia.py,
+                   muestras.py y muestras_office.py (documentos de prueba)
+  verificador/     salida.py (comandos, exfiltración), enlaces.py, eco.py (eco de la trampa), respaldo.py,
+                   verificador.py
   revisor/         extensiones.py, conectores.py, modelos.py, red.py, revisor.py, demo.py, lista_negra.json
-app_web.py         web con Streamlit (solo escucha en tu PC)
-evaluacion/        conjuntos, generadores, experimento de prompts, conjuntos públicos y resultados
+extension/         extensión del navegador: manifest.json, background.js (clave y servicio), contenido.js (webs),
+                   comun.js (reglas para el fallo cerrado), panel, opciones, página de prueba y pruebas
+app_web.py         web con Streamlit (guardian web; solo escucha en tu PC)
+instalar.ps1       instalador para Windows (entorno, librerías, lanzador guardian.cmd, médico)
+evaluacion/        conjuntos, generadores, experimentos, conjuntos públicos, resultados y repetir_medidas.py
 ejemplos/          documentos con trampa y limpios, y el agente de demostración
 tests/             pruebas automáticas con una IA falsa (no necesitan Ollama)
 docs/              esta documentación
@@ -109,9 +153,10 @@ docs/              esta documentación
 | IA local | Ollama + Qwen3.5 (9B en el PC, 2B para pruebas) | Gratis, sin enviar datos fuera, buen español y salida estructurada |
 | Conexión con la IA | librería `ollama` y `httpx` (API compatible con OpenAI) | Cambiar de proveedor sin tocar el resto |
 | PDF | `pdfminer.six` | Da el color, el tamaño y la posición de cada letra: hace falta para ver el texto escondido |
-| Word | Solo la biblioteca estándar (`zipfile`, `xml`) | Un .docx es un zip con XML; menos dependencias, menos riesgos |
+| Word, PowerPoint y Excel | La biblioteca estándar (`zipfile`) y `defusedxml` | Son zips con XML; `defusedxml` lee el XML sin DTD ni entidades (sin bombas XML) |
 | Web | Streamlit | Interfaz en el navegador con poco código |
-| Calidad | pytest (146 pruebas), ruff, GitHub Actions en Windows y Linux | Cada cambio se comprueba solo |
+| Extensión del navegador | JavaScript sin librerías, Manifest V3 (Chrome, Edge, Brave) | Nada que descargar de terceros dentro de la extensión; los permisos justos (sin acceso a todas las webs) |
+| Calidad | pytest (207 pruebas), ruff, pruebas de la extensión en un Chromium de verdad (Playwright) y GitHub Actions en Windows y Linux, con el instalador incluido | Cada cambio se comprueba solo |
 
 ## Hardware
 

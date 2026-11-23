@@ -77,9 +77,21 @@ Riesgo residual: una acción con aspecto normal pero dañina (por ejemplo, borra
 
 ### 3.4 El Guardián como servicio
 
-- La web y el proxy solo escuchan en `127.0.0.1`.
-- El proxy rechaza peticiones con un Host que no sea local (DNS rebinding) y las que vienen de páginas web (cabecera Origin), y puede exigir una clave.
+- La web, el proxy y el servicio de la extensión solo escuchan en `127.0.0.1`. `guardian web` lo fuerza aunque Streamlit se arranque desde otra carpeta, y no manda estadísticas de uso.
+- El proxy y el servicio rechazan peticiones con un Host que no sea local (DNS rebinding) y las que vienen de páginas web (cabecera Origin). El proxy puede exigir una clave y el servicio la exige siempre (32 caracteres al azar, guardada solo para tu usuario en `~/.guardian/servicio.json`).
 - Las peticiones demasiado grandes se rechazan.
+
+### 3.5 La extensión del navegador
+
+La extensión vive dentro de webs que no son nuestras, así que se diseñó suponiendo que la web del chatbot (o un script malicioso dentro de ella) puede intentar abusar de ella:
+
+- **La web no ve nada que no deba.** Solo recibe el texto ya tapado. La respuesta con tus datos reales se enseña en el panel lateral, que es una página de la extensión y la web no puede leer. La clave del servicio solo la tiene el trabajador de fondo; a los scripts de las webs solo se les pasan los interruptores de las opciones.
+- **Solo la extensión habla con el servicio.** El servicio rechaza cualquier petición con un Origin que no sea de una extensión y sin la clave, así que una web cualquiera no puede usar tu Guardián para restaurar marcadores. El resumen de actividad solo se da a las páginas de la propia extensión.
+- **Nada de HTML de fuera.** Las respuestas se pintan con `textContent` (nunca `innerHTML`), así que una respuesta manipulada no puede meter código en el panel. Los avisos en la web van dentro de un shadow root cerrado.
+- **Permisos justos.** Solo se ejecuta en las webs de los chatbots de la lista y solo puede conectar con `127.0.0.1`; no pide acceso a todas las webs ni el permiso «tabs» (para ver las direcciones de tus pestañas).
+- **Fallo cerrado.** Si el servicio está apagado, un texto que parece llevar datos (según una copia de las reglas en la propia extensión) no se pega ni se envía.
+
+Riesgo residual: la extensión depende de cómo está hecha cada web; si una web cambia su página, puede dejar de leer las respuestas (el clic derecho «Guardián: ver con mis datos» sirve en cualquier web). Una extensión maliciosa instalada en el mismo navegador podría leer lo que se ve en la página, igual que con cualquier otra web: para eso está el revisor del PC (R9).
 
 ## 4. Matriz de riesgos
 
@@ -100,7 +112,10 @@ Probabilidad e impacto sin Guardián, control principal y riesgo que queda con �
 | R11 | Engañar a las piezas con IA del Guardián | Media | Medio | Reglas primero, salida estructurada, marcas aleatorias | Medio |
 | R12 | Respuesta inventada o enlace falso | Alta | Medio | Juez de respaldo, enlaces y DOI | Medio |
 | R13 | El Guardián bloquea y el usuario se queda sin respuesta (el atacante consigue al menos estropear el servicio) | Media | Medio | El proxy le pide a la IA que siga sin la acción bloqueada; `--leer-sospechosos` para que la IA lea lo sospechoso sin poder actuar | Bajo |
-| R14 | La IA no puede actuar, pero repite lo que pide la trampa y convence a la persona ("verifica tu cuenta") | Media | Alto | Aviso al final de la respuesta cuando la IA ha leído algo sospechoso; verificador de respuestas | Medio |
+| R14 | La IA no puede actuar, pero repite lo que pide la trampa y convence a la persona ("verifica tu cuenta") | Media | Alto | Verificador: eco de la trampa (PELIGRO si lleva un destino sacado de lo leído) y aviso al final de la respuesta cuando la IA ha leído algo sospechoso. Medido: 8/8 y 9/9 avisos, 0 de 40 falsas alarmas | Bajo |
+| R15 | Pegar en un chatbot de la web datos personales o un documento con trampa | Alta | Alto | Extensión del navegador: tapa al pegar y antes de enviar, aduana para lo pegado, fallo cerrado sin servicio | Medio |
+| R16 | Una web abusa de la extensión o del servicio local para leer tus datos | Baja | Alto | Clave solo en el trabajador de fondo, Origin solo de extensiones, panel que la web no puede leer, `textContent` | Bajo |
+| R17 | Texto escondido en PowerPoint o Excel (blanco, diminuto, hojas ocultas, `;;;`) | Media | Alto | Lectores de PowerPoint y Excel: la IA solo recibe lo visible; fórmulas DDE y macros avisadas | Bajo |
 
 El riesgo residual medio de varias filas es honesto: ninguna defensa contra la prompt injection es perfecta hoy. La estrategia es **defensa en profundidad**: varias capas distintas para que un ataque tenga que saltarlas todas.
 
@@ -108,6 +123,7 @@ El riesgo residual medio de varias filas es honesto: ninguna defensa contra la p
 
 - Las reglas cubren sobre todo formatos españoles y frases en español e inglés.
 - No se analizan imágenes (texto dentro de una foto o captura).
-- La aduana lee texto, HTML, Word y PDF. Faltan Excel, PowerPoint y correos con adjuntos.
+- La aduana lee texto, HTML, Word, PowerPoint, Excel y PDF. Faltan los formatos antiguos (`.doc`, `.xls`, `.ppt`), OpenDocument y los correos con adjuntos.
+- El eco de la trampa reconoce peticiones de verificar cuentas, mandar datos, pagar, instalar, llamar o entrar en webs, en español y en inglés; una trampa que pida otra cosa necesitaría una categoría nueva.
 - La calidad del detector y de los jueces depende del modelo: el 9B acierta más que el 2B pero tarda más.
 - El revisor conoce las rutas de las apps más usadas en Windows, macOS y Linux; una app nueva necesita añadir su ruta.

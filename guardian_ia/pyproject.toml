@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "guardian-ia"
-version = "0.3.0"
+version = "0.4.0"
 description = "Programa local que se pone entre tú y la IA: tapa tus datos, frena la prompt injection, revisa las respuestas y la IA instalada en el PC."
 readme = "README.md"
 license = "MIT"

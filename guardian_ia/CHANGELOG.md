@@ -4,17 +4,34 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). V
 
 ## [Sin publicar]
 
+## [0.4.0] - 2026-11-23
+
+Entrega final: el Guardián sale de la terminal. Funciona dentro de las webs de los chatbots, se instala con un comando y cuenta lo que ha hecho.
+
 ### Añadido
+- **Extensión del navegador** (`extension/`, Chrome, Edge y Brave, Manifest V3) y **servicio local** (`python -m guardian servicio`): en ChatGPT, Claude, Gemini, Copilot, DeepSeek, Mistral, Perplexity, Qwen y Grok tapa tus datos al pegar y antes de enviar, pasa la aduana a los textos largos que pegas y revisa la respuesta de la IA. En el panel lateral se ve la respuesta con tus datos reales; la web del chatbot nunca ve ni tus datos ni la clave del servicio (solo la guarda el trabajador de fondo de la extensión). Si el servicio está apagado y el texto parece llevar datos, no lo pega ni lo envía. Página de prueba sin Internet con cuatro ejemplos. El servicio solo escucha en 127.0.0.1, comprueba Host y Origin (solo extensiones) y exige una clave al azar guardada en `~/.guardian/servicio.json`.
+- **Escudo**: CIF de empresas (con su carácter de control), número de la Seguridad Social (con su control), pasaporte y fecha de nacimiento; estos tres últimos solo junto a palabras que los anuncian, para no confundirlos con otros números. Medido sin falsas alarmas nuevas.
+- **Aduana y escáner para PowerPoint y Excel** (`.pptx`, `.pptm`, `.xlsx`, `.xlsm`): texto blanco sobre fondo claro (mirando el fondo de la diapositiva, del diseño y del patrón), letra de 2 puntos o menos, formas fuera de la diapositiva, diapositivas, formas, hojas, filas y columnas ocultas, hojas "muy ocultas", celdas con formato `;;;`, notas del orador, comentarios, texto alternativo, metadatos, macros, enlaces DDE y fórmulas que ejecutan programas (`cmd|`, `WEBSERVICE`...). Ejemplos: `presentacion_con_trampa.pptx` y `presupuesto_con_trampa.xlsx`.
+- **Eco de la trampa** en el verificador (`guardian/verificador/eco.py`): avisa cuando la IA te empuja a verificar tu cuenta, mandar datos, pagar, instalar algo, llamar o entrar en una web y ese empujón sale de lo que ha leído (documento, web, correo pegado, resultado de una herramienta) y no de lo que pediste. Con un destino sacado de lo leído es PELIGRO. Lo usan el chat, el proxy, el servicio y la extensión. Medido sobre las 227 respuestas guardadas del ataque al agente (`evaluacion/medir_eco.py`): 8 de 8 y 9 de 9 avisos donde la IA repetía la trampa, 0 de 40 sin trampa.
+- **Panel de actividad**: `python -m guardian informe [--dias N] [--json]`, la pestaña "📈 Actividad" de la web y «Esta semana» en el panel de la extensión. Datos tapados por tipo, documentos con trampas, respuestas con avisos o peligros (y de qué tipo), acciones de agentes bloqueadas y lo último importante, leído del registro, que nunca guarda los datos.
+- **Instalador para Windows** (`instalar.ps1`): busca Python, crea el entorno virtual (en `%LOCALAPPDATA%\GuardianIA\entorno` si la ruta del proyecto es larga y Windows no tiene activadas las rutas largas), instala todo, comprueba Ollama y el modelo, pasa el médico y crea el lanzador `guardian.cmd` para usarlo sin activar nada. Probado en la integración continua con Windows PowerShell 5.1.
+- **`python -m guardian web`**: abre la web desde cualquier carpeta, siempre solo en 127.0.0.1 y sin estadísticas de uso.
+- **`evaluacion/repetir_medidas.py`**: repite todas las medidas en otro PC (pruebas, escudo y aduana con reglas y con IA, ataque al agente en cinco configuraciones y eco de la trampa) y deja un resumen con el PC, la gráfica y el tiempo de cada paso, sin tocar los resultados guardados. `guardian evaluar --salida` y `medir_eco.py CARPETA --salida` para eso.
 - **Revisar carpetas antes de dárselas a una IA** (`python -m guardian escanear CARPETA`): cada documento (texto, HTML, Word, PDF) pasa por el escudo y la aduana y sale con un veredicto: TRAMPA, DATOS PERSONALES, NO SE PUEDE LEER o LIMPIO. No entra en `.git`, `.venv` ni carpetas ocultas, y el informe (`--informe`, `--json`) cuenta los datos por tipo sin enseñarlos nunca.
 - **Anonimizar documentos** (`python -m guardian anonimizar ARCHIVO`): copia con solo lo que se ve (sin letra blanca ni invisibles) y los datos tapados, lista para compartir con cualquier IA.
 - **`python -m guardian doctor`**: comprueba Python, que el entorno virtual está activado, las librerías (también si están instaladas a medias, como Streamlit sin `streamlit.proto`), si la ruta es tan larga que Windows corta archivos al instalar, y Ollama con el modelo. Para cada fallo dice el comando que lo arregla. Funciona aunque falten librerías.
 - Web: pestaña "Revisar una carpeta" (una carpeta del PC o varios archivos subidos, con informe descargable) y anonimizar con descarga.
 
 ### Arreglado
+- Al desinfectar un documento, la aduana ya no convierte `º` y `ª` en `o` y `a` (`n.º 233` se queda igual).
 - El escudo tapa también los IBAN escritos en minúsculas (`es91 2100 ...`). En la prueba ciega solo con reglas, la fuga baja del 37,8 % al 35,1 % (IBAN: de 1 de 2 a 2 de 2). Ojo: este fallo se vio en la lista de fallos de la prueba ciega, así que esa mejora ya no cuenta como medida a ciegas.
 - Un correo con un DNI dentro (`12345678z@gmail.com`) se tapa entero como `[EMAIL_1]`; antes se tapaba solo el DNI y quedaba `[DNI_1]@gmail.com`.
 - Los lectores de Word usan `defusedxml` (nueva dependencia) para leer el XML sin DTD ni entidades, además de la comprobación rápida de DOCTYPE que ya había.
-- La integración continua (`.github/workflows/tests.yml`) pasa a la raíz del repositorio, que es donde GitHub la busca.
+- La integración continua (`.github/workflows/tests.yml`) pasa a la raíz del repositorio, que es donde GitHub la busca. Ahora tiene tres trabajos: pruebas en Windows y Linux (Python 3.11 y 3.13), la extensión en un Chromium de verdad (Playwright) y el instalador de Windows.
+
+### Cambiado
+- El proxy apunta en el registro el tipo de cada aviso de la respuesta (para el panel de actividad).
+- El médico recomienda `instalar.ps1` cuando falta el entorno o la ruta es demasiado larga.
 
 ## [0.3.0] - 2026-10-24
 
