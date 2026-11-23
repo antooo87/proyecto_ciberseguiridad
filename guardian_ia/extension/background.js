@@ -98,7 +98,7 @@ chrome.runtime.onMessage.addListener((mensaje, remitente, responder) => {
     },
     salud: () => llamar("/salud"),
     proteger: async () => {
-      const r = await llamar("/v1/guardian/proteger", { texto: String(mensaje.texto || "") });
+      const r = await llamar("/v1/guardian/proteger", { texto: String(mensaje.texto || ""), pegado: mensaje.pegado === true });
       await contar(remitente.tab?.id, r.datos);
       return r;
     },

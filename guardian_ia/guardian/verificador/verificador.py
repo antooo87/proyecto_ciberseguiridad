@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from ..ia import ErrorIA
+from .eco import revisar_eco
 from .enlaces import revisar_enlaces
 from .salida import HallazgoVerificacion, revisar_salida
 
@@ -34,9 +35,12 @@ class Verificador:
         self.comprobar_enlaces = comprobar_enlaces
 
     def revisar(self, respuesta_ia: str, contexto: str = "", boveda=None,
-                documento: Optional[str] = None, canario: Optional[str] = None) -> InformeVerificacion:
+                documento: Optional[str] = None, canario: Optional[str] = None,
+                peticion: Optional[str] = None, leido: Optional[str] = None) -> InformeVerificacion:
         """canario: código secreto escondido en las instrucciones de la IA. Si aparece en la respuesta,
-        alguien ha conseguido que la IA cuente sus instrucciones internas (OWASP LLM07)."""
+        alguien ha conseguido que la IA cuente sus instrucciones internas (OWASP LLM07).
+        leido: lo que ha leído la IA y no has escrito tú (documentos, webs, resultados de herramientas);
+        peticion: lo que has escrito tú. Con ellos se mira si la IA repite lo que pedía una trampa."""
         informe = InformeVerificacion()
         if canario and canario in respuesta_ia:
             informe.hallazgos.append(HallazgoVerificacion(
@@ -44,6 +48,8 @@ class Verificador:
                 "código secreto que solo estaba en ellas): alguien ha conseguido manipularla.", canario))
         informe.hallazgos += revisar_salida(respuesta_ia, boveda)
         informe.hallazgos += revisar_enlaces(respuesta_ia, contexto, self.comprobar_enlaces)
+        if leido:
+            informe.hallazgos += revisar_eco(respuesta_ia, leido, peticion or "")
         if documento and self.juez_respaldo is not None:
             try:
                 informe.respaldo = self.juez_respaldo.juzgar(respuesta_ia, documento)

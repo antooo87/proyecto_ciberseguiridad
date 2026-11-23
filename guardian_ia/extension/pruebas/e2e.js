@@ -171,6 +171,22 @@ function comprobar(cond, texto) {
   await page.waitForTimeout(300);
   await captura(page, "ext_peligro.png");
 
+  // Un correo de phishing pegado: la IA de mentira se lo cree y lo repite. El Guardián avisa del "eco" de la trampa
+  await page.evaluate(() => { document.getElementById("compositor").textContent = ""; });
+  await page.focus("#compositor");
+  await pegar(page, await page.textContent("#ejemplo-banco"));
+  await page.waitForTimeout(800);
+  await page.press("#compositor", "Enter");
+  let eco = null;
+  for (let i = 0; i < 20; i++) {
+    await page.waitForTimeout(500);
+    eco = await sw.evaluate(async (k) => (await chrome.storage.session.get(k))[k], `ultima_${tabId}`);
+    if (eco && (eco.texto || "").includes("Según el correo")) break;
+  }
+  comprobar(eco && eco.nivel === "PELIGRO" && eco.hallazgos.some((h) => h.explicacion.includes("sale de lo que ha leído")),
+    "la IA repite lo que pedía el correo pegado: el Guardián avisa del eco de la trampa");
+  await captura(page, "ext_eco.png");
+
   // El panel (abierto como pestaña) enseña la última respuesta
   const panel = await contexto.newPage();
   panel.on("pageerror", (e) => console.log("[panel error]", e.message));
@@ -179,14 +195,14 @@ function comprobar(cond, texto) {
   console.log("panel estado:", await panel.textContent("#estado-texto"));
   const textoPanel = await panel.textContent("#texto");
   console.log("panel texto:", textoPanel.slice(0, 200));
-  comprobar(textoPanel.includes("irm"), "el panel abierto en pestaña enseña la última respuesta");
+  comprobar(textoPanel.includes("Según el correo"), "el panel abierto en pestaña enseña la última respuesta");
   // Lo que hace el botón «Leer la última respuesta» con la página de prueba
   const porTabs = await panel.evaluate((t) => new Promise((r) => chrome.tabs.sendMessage(t, { tipo: "ultima_respuesta" },
     (x) => r(chrome.runtime.lastError ? "error: " + chrome.runtime.lastError.message : x))), tabId);
   console.log("tabs.sendMessage a la prueba:", JSON.stringify(porTabs).slice(0, 120));
   const porRuntime = await panel.evaluate((t) => new Promise((r) => chrome.runtime.sendMessage({ tipo: "ultima_respuesta", tabId: t },
     (x) => r(chrome.runtime.lastError ? { error: chrome.runtime.lastError.message } : x))), tabId);
-  comprobar(porRuntime && porRuntime.ok && porRuntime.texto.includes("irm"), "la página de prueba contesta al panel");
+  comprobar(porRuntime && porRuntime.ok && porRuntime.texto.includes("Según el correo"), "la página de prueba contesta al panel");
   const otra = await panel.evaluate(() => new Promise((r) => chrome.runtime.sendMessage({ tipo: "ultima_respuesta", tabId: 1 },
     (x) => r(chrome.runtime.lastError ? { error: chrome.runtime.lastError.message } : x))));
   comprobar(!otra.ok, `si la pregunta es para otra pestaña no contesta (${otra.error})`);

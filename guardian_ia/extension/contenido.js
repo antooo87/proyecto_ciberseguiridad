@@ -151,7 +151,7 @@
     if (!el || !texto || !texto.trim()) return; // imágenes, archivos...: el chatbot lo gestiona
     evento.preventDefault(); // hay que pararlo YA, antes de esperar al servicio
     evento.stopImmediatePropagation();
-    const r = await pedir({ tipo: "proteger", texto });
+    const r = await pedir({ tipo: "proteger", texto, pegado: true }); // lo pegado se recuerda para ver ecos de trampas
     if (r.ok) {
       insertar(el, r.protegido);
       if (!avisarAduana(r.aduana)) {

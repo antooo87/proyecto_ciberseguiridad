@@ -28,6 +28,7 @@ import secrets
 import stat
 import threading
 import time
+from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Optional
@@ -43,6 +44,8 @@ from .verificador import Verificador, neutralizar_imagenes
 PUERTO = 8788
 MAX_CUERPO = 1 * 2**20  # 1 MB: lo que se pega en un chat
 LARGO_DOCUMENTO = 400  # a partir de aquí, lo pegado se trata como un documento y pasa por la aduana
+MIN_PEGADO = 80  # lo pegado más largo que esto se recuerda para buscar ecos de trampas en la respuesta
+MAX_PEGADOS = 5
 HOSTS_LOCALES = {"127.0.0.1", "localhost", "::1"}
 ORIGENES_EXTENSION = ("chrome-extension://", "moz-extension://", "safari-web-extension://")
 ARCHIVO_CLAVE = Path.home() / ".guardian" / "servicio.json"
@@ -76,9 +79,12 @@ class ServicioGuardian:
         self.verificador = verificador or Verificador()
         self.registro = registro or Registro()
         self.boveda = Boveda()
+        self.pegados: deque[str] = deque(maxlen=MAX_PEGADOS)  # lo último que has pegado, ya tapado
         self._cerrojo = threading.Lock()  # varias pestañas a la vez: la bóveda se toca de una en una
 
-    def proteger(self, texto: str) -> dict:
+    def proteger(self, texto: str, pegado: bool = False) -> dict:
+        """pegado=True: lo has pegado (un correo, un documento...). Se recuerda, ya tapado, para ver luego si la
+        respuesta de la IA repite lo que pedía ese texto (el "eco" de una trampa)."""
         informe_aduana, desinfectado = None, texto
         if len(texto) >= LARGO_DOCUMENTO:
             informe = self.aduana.analizar(texto)
@@ -89,6 +95,8 @@ class ServicioGuardian:
                 desinfectado = Aduana.desinfectar(texto)
         with self._cerrojo:
             resultado = self.escudo.proteger(desinfectado, self.boveda)
+            if pegado and len(texto) >= MIN_PEGADO:
+                self.pegados.append(resultado.protegido)
         datos = resultado.resumen()
         self.registro.apuntar("extension_proteger", datos_tapados=datos,
                               riesgo_documento=informe_aduana["nivel"] if informe_aduana else None)
@@ -97,7 +105,7 @@ class ServicioGuardian:
 
     def restaurar(self, texto: str) -> dict:
         with self._cerrojo:
-            verificacion = self.verificador.revisar(texto, boveda=self.boveda)
+            verificacion = self.verificador.revisar(texto, boveda=self.boveda, leido="\n\n".join(self.pegados))
             restaurado = neutralizar_imagenes(self.escudo.restaurar(texto, self.boveda))
         self.registro.apuntar("extension_restaurar", verificacion=verificacion.nivel,
                               avisos_respuesta=verificacion.resumen())
@@ -108,6 +116,7 @@ class ServicioGuardian:
     def nueva(self) -> dict:
         with self._cerrojo:
             self.boveda = Boveda()
+            self.pegados.clear()
         return {"ok": True}
 
 
@@ -188,7 +197,7 @@ class _Manejador(BaseHTTPRequestHandler):
             return
         servicio = self.server.servicio
         if ruta == "/v1/guardian/proteger":
-            respuesta = servicio.proteger(texto)
+            respuesta = servicio.proteger(texto, pegado=cuerpo.get("pegado") is True)
             partes = [f"tapados: {respuesta['resumen']}" if respuesta["datos"] else "nada que tapar"]
             if respuesta["aduana"]:
                 partes.append(f"texto pegado con riesgo {respuesta['aduana']['nivel']}")

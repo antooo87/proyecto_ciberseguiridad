@@ -333,7 +333,8 @@ class ProxyGuardian:
                     funcion = llamada["function"]
                     funcion["arguments"] = _sobre_argumentos(funcion.get("arguments", ""), _sin_marcas)
         contenido = mensaje.get("content") or ""
-        verificacion = self.verificador.revisar(contenido, contexto=contexto, boveda=boveda)
+        verificacion = self.verificador.revisar(contenido, contexto=contexto, boveda=boveda,
+                                                peticion=origen.get("tuyo_tapado"), leido=origen.get("leido_tapado"))
         informe["verificacion"] = max(informe["verificacion"], verificacion.nivel,
                                       key=["OK", "AVISO", "PELIGRO"].index)
         alertas = [h.explicacion for h in verificacion.hallazgos if h.gravedad == "PELIGRO"]
@@ -432,6 +433,10 @@ class ProxyGuardian:
         texto_leido = "\n".join(_textos(m.get("content")) for m in originales if m.get("role") in ("tool", "function"))
         origen = {"texto_tuyo": texto_tuyo.lower(), "tuyos": _destinos(texto_tuyo), "leidos": _destinos(texto_leido)}
         mensajes = [self._revisar_mensaje(m, boveda, informe) for m in originales]
+        # Ya tapados, como los verá la IA: para saber si su respuesta repite lo que pedía algo que ha leído
+        origen["tuyo_tapado"] = "\n".join(_textos(m.get("content")) for m in mensajes if m.get("role") == "user")
+        origen["leido_tapado"] = "\n".join(_textos(m.get("content")) for m in mensajes
+                                           if m.get("role") in ("tool", "function"))
         peticion = {**cuerpo, "messages": mensajes, "stream": False}
         peticion.pop("stream_options", None)
         if self.modelo:
