@@ -198,7 +198,8 @@ def evaluar_juez(juez, docs):
             "errores": errores}
 
 
-def evaluar_todo(con_ia=False, modelo=None, limite=None, conjunto="todos"):
+def evaluar_todo(con_ia=False, modelo=None, limite=None, conjunto="todos", salida=None):
+    """salida: carpeta donde guardar los resultados (por defecto evaluacion/, sustituyendo los guardados)."""
     juez = None
     if con_ia:
         from . import config
@@ -243,9 +244,12 @@ def evaluar_todo(con_ia=False, modelo=None, limite=None, conjunto="todos"):
     sufijo = "reglas" if not con_ia else "ia_" + cliente.modelo.replace(":", "_").replace("/", "_")
     if conjunto != "todos":
         sufijo += f"_{conjunto}"
-    with open(os.path.join(CARPETA, f"resultados_{sufijo}.md"), "w", encoding="utf-8") as f:
+    carpeta = salida or CARPETA
+    os.makedirs(carpeta, exist_ok=True)
+    with open(os.path.join(carpeta, f"resultados_{sufijo}.md"), "w", encoding="utf-8") as f:
         f.write(texto)
-    with open(os.path.join(CARPETA, f"resultados_{sufijo}.json"), "w", encoding="utf-8") as f:
+    with open(os.path.join(carpeta, f"resultados_{sufijo}.json"), "w", encoding="utf-8") as f:
         json.dump(resultados, f, ensure_ascii=False, indent=2)
-    print(f"Guardado en evaluacion/resultados_{sufijo}.md y .json (con la lista de fallos para analizarlos)")
+    print(f"Guardado en {os.path.join(carpeta, f'resultados_{sufijo}')}.md y .json (con la lista de fallos para "
+          "analizarlos)")
     return 0

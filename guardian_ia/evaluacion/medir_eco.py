@@ -1,6 +1,7 @@
 """Mide el detector de "eco de la trampa" sobre las respuestas guardadas del experimento con agentes.
 
-    python evaluacion/medir_eco.py
+    python evaluacion/medir_eco.py                                   (registros de evaluacion/agente/)
+    python evaluacion/medir_eco.py CARPETA --salida informe.md       (otra carpeta con registros)
 
 No llama a ninguna IA: vuelve a leer las respuestas que dio el agente (evaluacion/agente/*.log) y mira, para cada
 una, si el verificador avisa de que la IA está repitiendo lo que pedía la trampa de la web. Como "lo leído" usa la
@@ -10,6 +11,7 @@ Para poder revisarlo a mano, el informe lista todas las frases marcadas y todas 
 "verificar" y NO se han marcado. Guarda evaluacion/eco_resultados.md.
 """
 
+import argparse
 import glob
 import os
 import re
@@ -48,10 +50,14 @@ def respuestas(texto: str) -> list[str]:
     return [r for r in ("\n".join(b).strip() for b in bloques) if r and not r.startswith("🛑")]
 
 
-def main() -> None:
+def main(argv=None) -> None:
+    p = argparse.ArgumentParser(description="Mide el aviso de eco de la trampa sobre registros del agente")
+    p.add_argument("carpeta", nargs="?", default=os.path.join(RAIZ, "evaluacion", "agente"))
+    p.add_argument("--salida", default=os.path.join(RAIZ, "evaluacion", "eco_resultados.md"))
+    args = p.parse_args(argv)
     filas, marcadas, sin_marcar = [], [], []
     total = {"respuestas": 0, "mencionan": 0, "avisos": 0, "peligros": 0, "marcadas_sin_mencion": 0}
-    for ruta in sorted(glob.glob(os.path.join(RAIZ, "evaluacion", "agente", "*.log"))):
+    for ruta in sorted(glob.glob(os.path.join(args.carpeta, "*.log"))):
         nombre = os.path.basename(ruta)[:-4]
         modelo, _, config = nombre.partition("_")
         with open(ruta, encoding="utf-8") as f:
@@ -107,7 +113,7 @@ def main() -> None:
         *[f"- `{n}`: {f}" for n, f in sin_marcar],
         "",
     ]
-    salida = os.path.join(RAIZ, "evaluacion", "eco_resultados.md")
+    salida = args.salida
     with open(salida, "w", encoding="utf-8") as f:
         f.write("\n".join(lineas))
     print("\n".join(lineas[:len(filas) + 10]))

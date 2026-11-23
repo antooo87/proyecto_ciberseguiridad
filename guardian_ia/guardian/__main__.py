@@ -416,7 +416,8 @@ def cmd_demo(args):
 
 def cmd_evaluar(args):
     from .evaluacion import evaluar_todo
-    return evaluar_todo(con_ia=args.ia, modelo=args.modelo_detector, limite=args.limite, conjunto=args.conjunto)
+    return evaluar_todo(con_ia=args.ia, modelo=args.modelo_detector, limite=args.limite, conjunto=args.conjunto,
+                        salida=args.salida)
 
 
 def cmd_web(args):
@@ -629,6 +630,8 @@ def main(argv=None):
     s.add_argument("--modelo-detector", default=None)
     s.add_argument("--limite", type=int, default=None, help="usar solo los N primeros textos")
     s.add_argument("--conjunto", choices=["todos", "datos", "ciega"], default="todos")
+    s.add_argument("--salida", default=None, help="carpeta para los resultados (por defecto evaluacion/, sustituyendo "
+                                                  "los guardados)")
     s.set_defaults(func=cmd_evaluar)
 
     args = p.parse_args(argv)
