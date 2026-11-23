@@ -130,8 +130,8 @@ with st.sidebar:
                 "3. ✅ Aduana de documentos\n4. ✅ Revisor de la IA del PC")
 
 pestanas = st.tabs(["🔍 Probar el escudo", "💬 Chat protegido", "🛃 Aduana de documentos",
-                    "✅ Verificar una respuesta", "🩺 Revisar mi PC", "📊 Resultados"])
-tab_escudo, tab_chat, tab_aduana, tab_verificar, tab_revisar, tab_resultados = pestanas
+                    "📁 Revisar una carpeta", "✅ Verificar una respuesta", "🩺 Revisar mi PC", "📊 Resultados"])
+tab_escudo, tab_chat, tab_aduana, tab_carpeta, tab_verificar, tab_revisar, tab_resultados = pestanas
 
 # ---------------- 1. Probar el escudo ----------------
 with tab_escudo:
@@ -219,6 +219,56 @@ with tab_aduana:
         if informe.hallazgos:
             with st.expander("Lo que recibiría la IA (desinfectado: sin texto escondido ni comentarios ocultos)"):
                 st.code(Aduana.desinfectar(documento), language=None, wrap_lines=True)
+
+# ---------------- 3b. Revisar una carpeta y anonimizar ----------------
+with tab_carpeta:
+    from guardian.escaner import DATOS, ILEGIBLE, LIMPIO, TRAMPA, InformeEscaneo, anonimizar, escanear, revisar_archivo
+    st.subheader("¿Puedo darle estos documentos a una IA?")
+    st.caption("Antes de subir una carpeta a ChatGPT, a un proyecto de Claude o a un agente: qué documentos llevan "
+               "datos personales y cuáles esconden órdenes para la IA. Todo se revisa en tu PC.")
+    VEREDICTO_COLOR = {TRAMPA: "red", DATOS: "orange", ILEGIBLE: "gray", LIMPIO: "green"}
+    carpeta = st.text_input("Carpeta de tu PC", os.path.join(os.path.dirname(os.path.abspath(__file__)), "ejemplos"))
+    subidos = st.file_uploader("...o sube varios documentos", type=TIPOS_DOCUMENTO, accept_multiple_files=True)
+    if st.button("Revisar", type="primary"):
+        escudo_c, aduana_c = crear_escudo(con_ia, modelo_detector), crear_aduana(con_ia, modelo_detector)
+        try:
+            if subidos:
+                archivos = [revisar_archivo(f.getvalue(), escudo_c, aduana_c, f.name) for f in subidos]
+                informe_c = InformeEscaneo("documentos subidos", archivos)
+            else:
+                informe_c = escanear(carpeta, escudo_c, aduana_c)
+        except NotADirectoryError as e:
+            st.error(str(e))
+        else:
+            cuenta = informe_c.cuenta()
+            columnas = st.columns(4)
+            for col, (veredicto, n) in zip(columnas, cuenta.items(), strict=True):
+                col.metric(veredicto.capitalize(), n)
+            st.dataframe([{"Documento": a.ruta, "Veredicto": a.veredicto,
+                           "Datos personales": ", ".join(f"{n} {t}" for t, n in a.datos.items()) or "–",
+                           "Aduana": a.error or f"{a.riesgo} ({a.puntuacion})", "Texto escondido": a.ocultos}
+                          for a in informe_c.archivos], hide_index=True, width="stretch")
+            if cuenta[TRAMPA]:
+                st.error("No subas los documentos con TRAMPA: llevan órdenes o texto escondido para la IA.")
+            if cuenta[DATOS]:
+                st.warning("Los documentos con DATOS PERSONALES, compártelos anonimizados (abajo).")
+            st.download_button("Descargar el informe (.md)", informe_c.a_markdown(), "informe_carpeta.md")
+    st.divider()
+    st.markdown("**Anonimizar un documento**: copia sin el texto escondido y con los datos tapados, para compartir.")
+    para_anonimizar = st.file_uploader("Documento", type=TIPOS_DOCUMENTO, key="anonimizar")
+    if para_anonimizar is not None:
+        try:
+            texto_anon, resultado_anon, quitados = anonimizar(para_anonimizar.getvalue(),
+                                                              crear_escudo(con_ia, modelo_detector),
+                                                              para_anonimizar.name)
+        except ErrorLectura as e:
+            st.error(f"No puedo leer {para_anonimizar.name}: {e}")
+        else:
+            tapados = ", ".join(f"{n} {t}" for t, n in resultado_anon.resumen().items()) or "ningún dato"
+            st.caption(f"Tapados: {tapados}" + (f" · quitados {quitados} trozo(s) de texto escondido" if quitados else ""))
+            st.code(texto_anon, language=None, wrap_lines=True)
+            nombre_anon = os.path.splitext(para_anonimizar.name)[0] + "_anonimizado.txt"
+            st.download_button("Descargar la copia anonimizada", texto_anon, nombre_anon)
 
 # ---------------- 4. Verificar una respuesta ----------------
 with tab_verificar:

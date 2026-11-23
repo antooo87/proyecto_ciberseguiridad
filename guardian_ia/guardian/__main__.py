@@ -241,6 +241,67 @@ def cmd_revisar(args):
     return 0
 
 
+def cmd_escanear(args):
+    from .escaner import DATOS, ILEGIBLE, LIMPIO, TRAMPA, escanear
+    try:
+        informe = escanear(args.carpeta, _crear_escudo(args.ia, args.modelo_detector),
+                           _crear_aduana(args.ia, args.modelo_detector))
+    except NotADirectoryError as e:
+        print(f"{ROJO}{e}{FIN}")
+        return 1
+    if args.informe:
+        with open(args.informe, "w", encoding="utf-8") as f:
+            f.write(informe.a_markdown())
+    if args.json:
+        print(json.dumps(informe.a_dict(), ensure_ascii=False, indent=2))
+        return 2 if informe.cuenta()[TRAMPA] else 0
+    color = {TRAMPA: ROJO, DATOS: AMARILLO, ILEGIBLE: GRIS, LIMPIO: VERDE}
+    print(f"{NEGRITA}Carpeta {informe.carpeta}{FIN}: {len(informe.archivos)} documentos revisados "
+          f"{GRIS}({informe.saltados} archivos de otros tipos sin revisar, {informe.segundos:.1f} s){FIN}")
+    print("  " + " · ".join(f"{color[v]}{n} {v.lower()}{FIN}" for v, n in informe.cuenta().items() if n) + "\n")
+    for a in informe.archivos:
+        detalle = a.error or ", ".join(
+            [f"{n} {t}" for t, n in a.datos.items()]
+            + ([f"aduana: riesgo {a.riesgo} ({a.puntuacion})"] if a.riesgo != "NINGUNO" else [])
+            + ([f"{a.ocultos} trozo(s) de texto escondido"] if a.ocultos else []))
+        print(f"{color[a.veredicto]}● {a.veredicto:<17}{FIN} {a.ruta}  {GRIS}{detalle}{FIN}")
+    if informe.cuenta()[TRAMPA]:
+        print(f"\n{ROJO}No subas a una IA los documentos con TRAMPA:{FIN} mira cada uno con "
+              f"python -m guardian aduana ARCHIVO.")
+    if informe.cuenta()[DATOS]:
+        print(f"{AMARILLO}Los que llevan DATOS PERSONALES, compártelos anonimizados:{FIN} "
+              f"python -m guardian anonimizar ARCHIVO.")
+    if args.informe:
+        print(f"{GRIS}Informe guardado en {args.informe}{FIN}")
+    return 2 if informe.cuenta()[TRAMPA] else 0
+
+
+def cmd_anonimizar(args):
+    from pathlib import Path
+
+    from .aduana import ErrorLectura
+    from .escaner import anonimizar
+    try:
+        texto, resultado, quitados = anonimizar(args.archivo, _crear_escudo(args.ia, args.modelo_detector))
+    except (OSError, ErrorLectura) as e:
+        print(f"{ROJO}No puedo leer {args.archivo}: {e}{FIN}")
+        return 1
+    for aviso in resultado.avisos:
+        print(f"{AMARILLO}! {aviso}{FIN}")
+    origen = Path(args.archivo)
+    salida = Path(args.salida) if args.salida else origen.with_name(f"{origen.stem}_anonimizado.txt")
+    if salida.resolve() == origen.resolve():
+        print(f"{ROJO}La copia no puede sobrescribir el original.{FIN}")
+        return 1
+    salida.write_text(texto, encoding="utf-8")
+    print(f"{NEGRITA}Copia anonimizada guardada en {salida}{FIN}")
+    print(f"{GRIS}Tapados: {resumen(resultado.resumen())}"
+          + (f" · quitados {quitados} trozo(s) de texto escondido" if quitados else "") + f"{FIN}")
+    if not args.ia:
+        print(f"{GRIS}Sin --ia, los nombres, direcciones y contraseñas escritas a mano no se tapan.{FIN}")
+    return 0
+
+
 def cmd_proxy(args):
     from .proxy import ProxyGuardian, ServidorGuardian, preguntar_en_consola
     proveedor = (args.proveedor or config.PROVEEDOR).lower()
@@ -365,6 +426,21 @@ def main(argv=None):
     s.add_argument("--json", action="store_true", help="sacar el resultado en JSON")
     s.add_argument("--informe", help="guardar el informe en un archivo .md")
     s.set_defaults(func=cmd_revisar)
+
+    s = sub.add_parser("escanear", help="revisa una carpeta antes de dársela a una IA: datos personales y trampas")
+    s.add_argument("carpeta")
+    s.add_argument("--ia", action="store_true", help="usar también la IA local (nombres, direcciones, ataques)")
+    s.add_argument("--modelo-detector", default=None)
+    s.add_argument("--json", action="store_true", help="sacar el resultado en JSON")
+    s.add_argument("--informe", help="guardar el informe en un archivo .md")
+    s.set_defaults(func=cmd_escanear)
+
+    s = sub.add_parser("anonimizar", help="crea una copia de un documento con los datos tapados, para compartirla")
+    s.add_argument("archivo")
+    s.add_argument("--ia", action="store_true", help="tapar también nombres, direcciones y contraseñas (IA local)")
+    s.add_argument("--modelo-detector", default=None)
+    s.add_argument("--salida", help="dónde guardar la copia (por defecto, NOMBRE_anonimizado.txt al lado)")
+    s.set_defaults(func=cmd_anonimizar)
 
     s = sub.add_parser("proxy", help="pone el Guardián delante de cualquier programa que use la IA (API tipo OpenAI)")
     opciones_ia(s)
