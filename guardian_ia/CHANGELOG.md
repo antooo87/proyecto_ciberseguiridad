@@ -26,6 +26,7 @@ Para quien no sabe de informática: el Guardián te ayuda a preguntar mejor, te 
 - El escáner y el informe de carpetas usan los nombres que entiende cualquiera («2 cuentas bancarias (IBAN)») también en la terminal, y «1 archivo de otro tipo» en singular.
 - `guardian verificar --documento` y la página «Verificar una respuesta» no miraban el **eco de la trampa** (solo lo hacían el chat, el proxy, el servicio y la extensión): una respuesta que repetía «verifica tu cuenta en...» de la web pegada salía OK. Ahora lo miran, y con todo lo que pudo leer la IA, también lo escondido (un correo con la orden en `display:none`, por ejemplo).
 - El escudo no tapaba la fecha de nacimiento escrita como en los formularios, «Fecha nac.: 05/11/1985» o «Fecha de nac. 21/12/1985», ni en una frase ni como cabecera de una columna (solo «F. nac.» y «fecha de nacimiento»). Ahora sí, y «fecha nacional» sigue sin contar. No cambia ninguna medida: en los textos de la evaluación no hay fechas escritas así.
+- Las pruebas automáticas (`python -m pytest`) apuntaban lo que hacían en el registro de verdad, así que después de pasarlas la portada y la página «Actividad» enseñaban sucesos de mentira (respuestas con PELIGRO, trampas...). Ahora cada prueba usa un registro aparte (`tests/conftest.py`), como ya hacía la prueba de la extensión. Si las pasaste antes, borra la carpeta `registro/`.
 
 ## [0.4.0] - 2026-11-23
 
