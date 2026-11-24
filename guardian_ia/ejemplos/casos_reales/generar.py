@@ -190,7 +190,9 @@ def _fijar_fechas(datos: bytes) -> bytes:
     origen, salida = zipfile.ZipFile(io.BytesIO(datos)), io.BytesIO()
     with origen, zipfile.ZipFile(salida, "w", zipfile.ZIP_DEFLATED) as destino:
         for info in origen.infolist():
-            destino.writestr(zipfile.ZipInfo(info.filename, FECHA_ZIP), origen.read(info), zipfile.ZIP_DEFLATED)
+            nuevo = zipfile.ZipInfo(info.filename, FECHA_ZIP)
+            nuevo.create_system, nuevo.external_attr = 3, 0o644 << 16  # igual en Windows que en Linux
+            destino.writestr(nuevo, origen.read(info), zipfile.ZIP_DEFLATED)
     return salida.getvalue()
 
 
@@ -883,7 +885,8 @@ def crear_todo(destino: Path = CARPETA) -> dict:
     guardar("5_preguntas_vagas.txt", ("\n".join(p for p, _ in preguntas) + "\n").encode("utf-8"))
     esperado["preguntas"] = [{"pregunta": p, "tipo": t} for p, t in preguntas]
 
-    (destino / "esperado.json").write_text(json.dumps(esperado, ensure_ascii=False, indent=2) + "\n", "utf-8")
+    # en bytes: write_text cambiaría los saltos de línea en Windows
+    (destino / "esperado.json").write_bytes((json.dumps(esperado, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
     return esperado
 
 

@@ -247,7 +247,8 @@ def pagina_carpeta():
             st.dataframe([{"Documento": a.ruta, "Veredicto": f"{VEREDICTO_ICONO.get(a.veredicto, '')} {a.veredicto}",
                            "Datos personales": contar(a.datos) if a.datos else "–",
                            "Aduana": a.error or f"{a.riesgo} ({a.puntuacion})", "Texto escondido": a.ocultos}
-                          for a in informe_c.archivos], hide_index=True, width="stretch")
+                          for a in informe_c.archivos], hide_index=True, width="stretch",
+                         column_config={"Datos personales": st.column_config.TextColumn(width="large")})
             if cuenta[TRAMPA]:
                 st.error("No subas los documentos con TRAMPA: llevan órdenes o texto escondido para la IA.")
             if cuenta[DATOS]:

@@ -7,7 +7,9 @@ escribieron a la vez que las reglas. Sirve para que ninguna mejora futura rompa 
 """
 
 import importlib.util
+import io
 import json
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -29,13 +31,23 @@ def casos(tmp_path_factory):
     return destino, generar.crear_todo(destino)
 
 
+def _contenido(ruta: Path):
+    """Los bytes del archivo; de un Word, PowerPoint o Excel (que son un zip), lo que hay DENTRO de cada parte:
+    la compresión puede cambiar un poco de una versión de zlib a otra (Windows y Linux) sin cambiar nada."""
+    datos = ruta.read_bytes()
+    if datos[:2] != b"PK":
+        return datos
+    with zipfile.ZipFile(io.BytesIO(datos)) as z:
+        return [(info.filename, z.read(info)) for info in z.infolist()]
+
+
 def test_los_archivos_del_repositorio_son_los_que_crea_el_generador(casos):
     destino, _ = casos
     creados = sorted(p.relative_to(destino) for p in destino.rglob("*") if p.is_file())
     guardados = sorted(p.relative_to(CASOS) for p in CASOS.rglob("*") if p.is_file()
                        and p.name not in ("generar.py", "LEEME.md", ".gitattributes") and "__pycache__" not in p.parts)
     assert creados == guardados
-    distintos = [str(r) for r in creados if (destino / r).read_bytes() != (CASOS / r).read_bytes()]
+    distintos = [str(r) for r in creados if _contenido(destino / r) != _contenido(CASOS / r)]
     assert distintos == [], f"Vuelve a ejecutar ejemplos/casos_reales/generar.py: han cambiado {distintos}"
 
 
