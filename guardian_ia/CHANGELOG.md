@@ -24,6 +24,7 @@ Para quien no sabe de informática: el Guardián te ayuda a preguntar mejor, te 
 ### Arreglado
 - «Mejorar mi pregunta» entendía mal seis de las diez preguntas de los casos reales: «hazme un correo para mi jefe» sacaba un 100 aunque no dice de qué trata (ahora pide el tema y deja un hueco para escribirlo), «una pregunta rápida, ¿qué antivirus es mejor?» salía con signos de interrogación repetidos, «Tengo que mandar a la gestoría..., cómo lo hago» se reescribía entera como una pregunta, «necesito una presentación» no se veía como un encargo, «a mi hijo le han hackeado el instagram» no se veía como un problema y «me ha llegado un sms raro» no te mandaba a «¿Es una estafa?».
 - El escáner y el informe de carpetas usan los nombres que entiende cualquiera («2 cuentas bancarias (IBAN)») también en la terminal, y «1 archivo de otro tipo» en singular.
+- `guardian verificar --documento` y la página «Verificar una respuesta» no miraban el **eco de la trampa** (solo lo hacían el chat, el proxy, el servicio y la extensión): una respuesta que repetía «verifica tu cuenta en...» de la web pegada salía OK. Ahora lo miran, y con todo lo que pudo leer la IA, también lo escondido (un correo con la orden en `display:none`, por ejemplo).
 
 ## [0.4.0] - 2026-11-23
 

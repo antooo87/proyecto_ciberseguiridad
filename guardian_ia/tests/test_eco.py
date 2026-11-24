@@ -72,12 +72,19 @@ def test_verbos_en_subjuntivo_y_urgencia():
     assert "prisas" in hallazgos[0].explicacion
 
 
-def test_el_verificador_lo_incluye_con_lo_leido():
+def test_el_verificador_lo_incluye_con_lo_leido(tmp_path, capsys):
     respuesta = "Debes verificar tu cuenta en https://bbva-seguridad.example/login antes de 24 horas."
     informe = Verificador().revisar(respuesta, leido=CORREO_BANCO, peticion="Resume este correo")
     assert ("eco_de_la_trampa", "PELIGRO") in tipos(informe.hallazgos)
     assert informe.nivel == "PELIGRO"
     assert "eco_de_la_trampa" not in [h.tipo for h in Verificador().revisar(respuesta).hallazgos]
+    # "guardian verificar --documento": cuenta también lo escondido del correo que leyó la IA (tú no lo ves)
+    from guardian.__main__ import main
+    correo = tmp_path / "aviso.eml"
+    correo.write_text("From: avisos@banco.example\nSubject: Novedades\nContent-Type: text/html; charset=utf-8\n\n"
+                      f"<p>Novedades de tu banco</p><p style='display:none'>{CORREO_BANCO}</p>", encoding="utf-8")
+    assert main(["verificar", "--documento", str(correo), respuesta]) == 2
+    assert "sale de lo que ha leído" in capsys.readouterr().out
 
 
 def test_servicio_recuerda_lo_pegado_para_ver_el_eco():

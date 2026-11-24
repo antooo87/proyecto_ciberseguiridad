@@ -279,12 +279,16 @@ def pagina_verificar():
     st.subheader("¿Me puedo fiar de esta respuesta de la IA?")
     st.caption("Pega una respuesta de cualquier IA (ChatGPT, Gemini, Copilot...). Se revisa en tu PC.")
     respuesta = st.text_area("Respuesta de la IA", EJEMPLO_RESPUESTA, height=180)
-    doc_base = st.text_area("Documento en el que debería basarse (opcional, usa la IA local)", "", height=80)
+    doc_base = st.text_area("Documento en el que debería basarse (opcional, usa la IA local)", "", height=80,
+                            help="Pega la web, el correo o el documento que leyó la IA. Miro si la respuesta "
+                            "repite lo que pedía una trampa escondida en él (sin IA) y, con la IA local, si la "
+                            "respuesta se basa de verdad en él.")
     comprobar = st.checkbox("Comprobar en Internet si los enlaces existen",
                             help="Se abre cada enlace nuevo: la web sabrá que alguien lo ha mirado.")
     if st.button("Verificar", type="primary"):
         juez = JuezRespaldo(cliente_local(modelo_detector)) if doc_base.strip() else None
-        informe = Verificador(juez, comprobar).revisar(respuesta, contexto=doc_base, documento=doc_base or None)
+        informe = Verificador(juez, comprobar).revisar(respuesta, contexto=doc_base, documento=doc_base or None,
+                                                       leido=doc_base or None)
         st.markdown(f"### Resultado: :{NIVEL_COLOR[informe.nivel]}[{informe.nivel}]")
         if not informe.hallazgos:
             st.success("No he encontrado comandos peligrosos, enlaces falsos ni intentos de sacar datos.")

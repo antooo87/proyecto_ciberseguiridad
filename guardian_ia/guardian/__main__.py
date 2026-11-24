@@ -295,7 +295,9 @@ def cmd_verificar(args):
     lectura = _leer(args.documento) if args.documento else None
     documento = lectura.visible if lectura else None
     verificador = _crear_verificador(bool(documento), args.comprobar_enlaces)
-    informe = verificador.revisar(respuesta, contexto=documento or "", documento=documento)
+    # leido: todo lo que pudo leer la IA, también lo escondido, para ver si repite lo que pedía una trampa
+    informe = verificador.revisar(respuesta, contexto=documento or "", documento=documento,
+                                  leido=lectura.texto if lectura else None)
     color = {"OK": VERDE, "AVISO": AMARILLO, "PELIGRO": ROJO}[informe.nivel]
     print(f"{NEGRITA}Resultado: {color}{informe.nivel}{FIN}")
     imprimir_verificacion(informe, todo=True)
@@ -828,7 +830,8 @@ def main(argv=None):
     s = sub.add_parser("verificar", help="revisa una respuesta de cualquier IA")
     s.add_argument("texto", nargs="?")
     s.add_argument("--archivo", help="leer la respuesta de un archivo")
-    s.add_argument("--documento", help="documento en el que debería basarse la respuesta (usa la IA local)")
+    s.add_argument("--documento", help="documento, web o correo que leyó la IA: se mira si la respuesta repite "
+                   "una trampa escondida en él y, con la IA local, si se basa en él")
     s.add_argument("--comprobar-enlaces", action="store_true", help="abrir los enlaces para ver si existen")
     s.set_defaults(func=cmd_verificar)
 
