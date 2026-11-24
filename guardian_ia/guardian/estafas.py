@@ -320,8 +320,11 @@ def analizar(texto: str, extra: Sequence[Senal] = ()) -> InformeEstafa:
     """`extra`: pistas que no salen del texto (las del correo entero: remitente, enlaces, adjuntos...)."""
     p = plano(texto)
     senales: list[Senal] = list(extra)
+    ya_vistas = {s.tipo for s in senales}
+    if "adjunto_ejecutable" in ya_vistas:  # el adjunto ya está explicado: no repetirlo con la pista del texto
+        ya_vistas.add("adjunto_peligroso")
     for tipo, patron, peso, explicacion in SENALES:
-        m = patron.search(p)
+        m = patron.search(p) if tipo not in ya_vistas else None
         if m:
             senales.append(Senal(tipo, explicacion, texto[m.start():m.end()].strip(), peso))
     for _nombre, patron, _gravedad, explicacion in COMANDOS:
