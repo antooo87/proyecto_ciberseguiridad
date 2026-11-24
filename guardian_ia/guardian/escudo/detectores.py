@@ -145,7 +145,7 @@ def _validar_recortando(regla: Regla, texto_trozo: str) -> Optional[str]:
 COLUMNAS = [  # (tipo, cabecera, molde del valor, validador, prioridad)
     ("NSS", re.compile(r"(?i)seguridad social|\bnu?ss\b|\bnaf\b|afiliaci[oó]n|\bs\.\s?s\."),
      re.compile(r"\d{2}[ /-]?\d{8}[ /-]?\d{2}"), v.nss_valido, 7),
-    ("FECHA_NACIMIENTO", re.compile(r"(?i)nacimiento|\bf\.?\s?nac\b|birth|\bdob\b"),
+    ("FECHA_NACIMIENTO", re.compile(r"(?i)nacimiento|\bf(?:echa)?\.?\s?(?:de\s+)?nac\b|birth|\bdob\b"),
      re.compile(r"\d{1,2}[/.-]\d{1,2}[/.-](?:19|20)?\d{2}"), v.fecha_valida, 6),
     ("PASAPORTE", re.compile(r"(?i)pasaporte|passport"), re.compile(r"[A-Z]{2,3}[ -]?\d{6}"), None, 7),
     ("CONTRASENA", re.compile(r"(?i)contrase[ñn]a|password|passwd|\bpwd\b|clave de acceso|\bpin\b"),

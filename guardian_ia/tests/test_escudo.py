@@ -115,6 +115,9 @@ def test_columnas_de_una_tabla_con_la_cabecera_lejos_del_dato():
     assert all(tabla[h.inicio:h.fin] == h.valor for h in hallazgos)
     protegido = Escudo().proteger(tabla).protegido
     assert "50/12345678/76" not in protegido and "Verano2024!" not in protegido
+    for cabecera in ("Fecha nac.", "F. nac.", "Fecha de nac."):  # las cabeceras abreviadas también cuentan
+        corta = f"Empleado;{cabecera}\nAna Ruiz;03/04/1990\n"
+        assert [(h.tipo, h.valor) for h in detectar_en_columnas(corta)] == [("FECHA_NACIMIENTO", "03/04/1990")], cabecera
 
 
 def test_columnas_no_se_inventan_datos():
