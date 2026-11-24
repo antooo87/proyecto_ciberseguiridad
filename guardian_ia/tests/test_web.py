@@ -92,3 +92,29 @@ def test_el_juego_cuenta_los_aciertos():
     next(b for b in web.button if b.label == "Siguiente ➡️").click().run()
     assert not web.exception
     assert web.session_state["juego"]["n"] == 1 and web.session_state["juego"]["aciertos"] == 1
+
+
+def test_guardian_app_arranca_la_web_y_el_servicio(monkeypatch, capsys):
+    import subprocess
+
+    import guardian.__main__ as programa
+    arrancadas = []
+
+    class WebFalsa:
+        def __init__(self, orden, cwd):
+            arrancadas.append((orden, cwd))
+
+        def wait(self):
+            return 0
+
+        def terminate(self):
+            pass
+
+    monkeypatch.setattr(subprocess, "Popen", WebFalsa)
+    monkeypatch.setattr(programa, "_esperar_web", lambda url: True)
+    assert programa.main(["app", "--sin-ventana", "--puerto", "8598", "--puerto-servicio", "0"]) == 0
+    orden, carpeta = arrancadas[0]
+    assert orden[orden.index("--server.address") + 1] == "127.0.0.1" and "8598" in orden
+    assert Path(carpeta) == WEB.parent
+    salida = capsys.readouterr().out
+    assert "Servicio para la extensión del navegador encendido" in salida and "Web abierta" in salida

@@ -541,12 +541,12 @@ def pagina_inicio():
         if servicio:
             st.success("El servicio de la extensión está encendido en este PC.")
         elif servicio is False:
-            st.warning("El servicio de la extensión está apagado. Ábrelo con el acceso directo «Guardián IA» o con: "
-                       "`python -m guardian servicio`")
+            st.warning("El servicio de la extensión está apagado. Ábrelo con el acceso directo «Guardián IA» del "
+                       "escritorio (o `guardian app`): enciende la web y el servicio a la vez.")
         else:
-            st.info("Para usar la extensión: arranca el servicio (`python -m guardian servicio`), carga la carpeta "
-                    "`extension` en chrome://extensions y pega la clave en sus opciones. Lo explica "
-                    "`extension/LEEME.md`.")
+            st.info("Para usar la extensión: abre el Guardián con el acceso directo «Guardián IA» (o `guardian app`), "
+                    "carga la carpeta `extension` en chrome://extensions y pega en sus opciones la clave que sale en "
+                    "la ventana negra. Lo explica `extension/LEEME.md`.")
 
 
 # ---------------- Mejorar mi pregunta ----------------

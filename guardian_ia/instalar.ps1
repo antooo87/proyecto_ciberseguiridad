@@ -9,6 +9,7 @@ Opciones:
     -Modelo qwen3.5:4b           modelo de Ollama que se comprueba (por defecto qwen3.5:9b)
     -DescargarModelo             si falta el modelo, descargarlo con "ollama pull" (unos 6 GB el de 9b)
     -SinOllama                   no comprobar Ollama
+    -SinAccesos                  no crear los accesos directos del escritorio y del menú Inicio
 
 Qué hace:
   1. Busca Python 3.11 o más nuevo (con el lanzador "py" o con "python").
@@ -17,6 +18,8 @@ Qué hace:
      crear archivos de más de 260 caracteres y Streamlit se quedaría a medias ("No module named streamlit.proto").
   3. Instala el Guardián con la web y las pruebas (pip install -e ".[web,dev]").
   4. Crea guardian.cmd en esta carpeta para usarlo sin activar nada: .\guardian demo, .\guardian web...
+     y los accesos directos «Guardián IA» en el escritorio y en el menú Inicio: abren la web en su propia
+     ventana y el servicio de la extensión (guardian app), para quien no quiere usar la terminal.
   5. Comprueba Ollama y el modelo, y pasa el médico (guardian doctor).
 Se puede volver a ejecutar cuando quieras: reutiliza el entorno y solo instala lo que falte.
 #>
@@ -25,7 +28,8 @@ param(
     [string]$Entorno = "",
     [string]$Modelo = "qwen3.5:9b",
     [switch]$DescargarModelo,
-    [switch]$SinOllama
+    [switch]$SinOllama,
+    [switch]$SinAccesos
 )
 
 $ErrorActionPreference = "Stop"
@@ -136,6 +140,30 @@ $lanzador = Join-Path $Proyecto "guardian.cmd"
 [System.IO.File]::WriteAllText($lanzador, (($lineas -join "`r`n") + "`r`n"), (New-Object System.Text.UTF8Encoding $false))
 Bien "Creado $lanzador"
 
+# 4b. Accesos directos (escritorio y menú Inicio): abren «guardian app» con el icono del Guardián -----------
+if ($SinAccesos) {
+    Aviso "Sin accesos directos (-SinAccesos)"
+} else {
+    Paso "Creando los accesos directos «Guardián IA» (escritorio y menú Inicio)"
+    try {
+        $shell = New-Object -ComObject WScript.Shell
+        $icono = Join-Path $Proyecto "extension\iconos\guardian.ico"
+        foreach ($carpeta in @([Environment]::GetFolderPath("Desktop"), [Environment]::GetFolderPath("Programs"))) {
+            if (-not $carpeta) { continue }
+            $acceso = $shell.CreateShortcut((Join-Path $carpeta "Guardián IA.lnk"))
+            $acceso.TargetPath = $lanzador
+            $acceso.Arguments = "app"
+            $acceso.WorkingDirectory = $Proyecto
+            $acceso.Description = "Guardián IA: usa la IA sin regalarle tus datos"
+            if (Test-Path $icono) { $acceso.IconLocation = $icono }
+            $acceso.Save()
+            Bien "Creado $(Join-Path $carpeta 'Guardián IA.lnk')"
+        }
+    } catch {
+        Aviso "No he podido crear los accesos directos ($($_.Exception.Message)). Usa: .\guardian app"
+    }
+}
+
 # 5. Ollama --------------------------------------------------------------------------------------------------
 if ($SinOllama) {
     Aviso "Sin comprobar Ollama (-SinOllama)"
@@ -167,7 +195,8 @@ if ($SinOllama) { $argumentosDoctor += "--sin-ollama" }
 $codigo = $LASTEXITCODE
 
 Write-Host ""
-Write-Host "Listo. Desde esta carpeta, sin activar nada:" -ForegroundColor Green
+Write-Host "Listo. Haz doble clic en «Guardián IA» (escritorio o menú Inicio) o, desde esta carpeta:" -ForegroundColor Green
+Write-Host "    .\guardian app         la web en su propia ventana y el servicio de la extensión, todo junto"
 Write-Host "    .\guardian demo        los cuatro módulos en un minuto (no necesita Ollama)"
 Write-Host "    .\guardian web         la web, solo en este PC"
 Write-Host "    .\guardian servicio    el servicio para la extensión del navegador"

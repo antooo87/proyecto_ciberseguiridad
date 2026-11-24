@@ -63,6 +63,14 @@ jobs:
       - run: .\instalar.ps1 -SinOllama -Entorno "$env:LOCALAPPDATA\GuardianIA\entorno"
       - name: la segunda vez reutiliza el entorno
         run: .\instalar.ps1 -SinOllama -Entorno "$env:LOCALAPPDATA\GuardianIA\entorno"
+      - name: crea los accesos directos y apuntan a guardian app
+        run: |
+          # Sin tildes en este paso: Windows PowerShell 5.1 podría leer el script con otra codificación
+          $acceso = Get-ChildItem ([Environment]::GetFolderPath("Desktop")) -Filter "Guardi*IA.lnk" | Select-Object -First 1
+          if (-not $acceso) { Write-Host "No hay acceso directo en el escritorio"; exit 1 }
+          $lnk = (New-Object -ComObject WScript.Shell).CreateShortcut($acceso.FullName)
+          Write-Host "$($lnk.TargetPath) $($lnk.Arguments) · icono $($lnk.IconLocation)"
+          if (-not $lnk.TargetPath.EndsWith("guardian.cmd") -or $lnk.Arguments -ne "app") { exit 1 }
       - name: el lanzador funciona sin activar nada
         run: |
           Get-Content .\guardian.cmd

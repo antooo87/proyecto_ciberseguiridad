@@ -17,6 +17,7 @@ Uso (desde la carpeta del proyecto, con el entorno virtual activado):
     python -m guardian proxy                  pone el Guardián delante de cualquier programa que use la IA
     python -m guardian informe                lo que ha hecho el Guardián estos días (sin enseñar ningún dato)
     python -m guardian web                    abre la web (solo en este PC)
+    python -m guardian app                    todo en uno: la web en su propia ventana y el servicio de la extensión
     python -m guardian evaluar                mide el escudo y la aduana con los textos de prueba
 """
 
@@ -524,28 +525,119 @@ def cmd_evaluar(args):
                         salida=args.salida)
 
 
-def cmd_web(args):
-    """Abre la web (app_web.py) solo en este PC, se lance desde la carpeta que se lance."""
-    import subprocess
+def _ruta_web():
     from pathlib import Path
-    app = Path(__file__).resolve().parent.parent / "app_web.py"
+    return Path(__file__).resolve().parent.parent / "app_web.py"
+
+
+def _orden_web(puerto: int, sin_navegador: bool) -> list[str] | None:
+    """La orden para arrancar la web solo en este PC (None, y lo explica, si falta algo)."""
+    app = _ruta_web()
     if not app.exists():
         print(f"{ROJO}No encuentro la web ({app}).{FIN} Viene con el código del proyecto: descárgalo de GitHub.")
-        return 1
+        return None
     try:
         import streamlit  # noqa: F401
     except ImportError:
         print(f"{ROJO}Falta Streamlit.{FIN} Instálalo con: pip install streamlit   (o con instalar.ps1 en Windows)")
+        return None
+    return [sys.executable, "-m", "streamlit", "run", str(app), "--server.address", "127.0.0.1",
+            "--server.port", str(puerto), "--browser.gatherUsageStats", "false",
+            "--server.headless", "true" if sin_navegador else "false"]
+
+
+def cmd_web(args):
+    """Abre la web (app_web.py) solo en este PC, se lance desde la carpeta que se lance."""
+    import subprocess
+    orden = _orden_web(args.puerto, args.sin_navegador)
+    if orden is None:
         return 1
-    orden = [sys.executable, "-m", "streamlit", "run", str(app), "--server.address", "127.0.0.1",
-             "--server.port", str(args.puerto), "--browser.gatherUsageStats", "false",
-             "--server.headless", "true" if args.sin_navegador else "false"]
     print(f"{VERDE}Web del Guardián en http://127.0.0.1:{args.puerto}{FIN} {GRIS}(solo este PC puede abrirla; "
           f"Ctrl+C para cerrarla){FIN}", flush=True)
     try:
-        return subprocess.call(orden, cwd=app.parent)  # desde su carpeta: usa su .streamlit/config.toml
+        return subprocess.call(orden, cwd=_ruta_web().parent)  # desde su carpeta: usa su .streamlit/config.toml
     except KeyboardInterrupt:
         return 0
+
+
+def _esperar_web(url: str, segundos: float = 45) -> bool:
+    """Espera a que la web conteste (sin pasar por ningún proxy: es este mismo PC)."""
+    import time
+    import urllib.request
+    abridor = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    fin = time.monotonic() + segundos
+    while time.monotonic() < fin:
+        try:
+            with abridor.open(f"{url}/_stcore/health", timeout=1) as respuesta:
+                if respuesta.status == 200:
+                    return True
+        except OSError:
+            time.sleep(0.4)
+    return False
+
+
+def _abrir_como_app(url: str) -> str:
+    """Edge o Chrome en modo aplicación (una ventana propia, sin barra de direcciones); si no, el navegador normal."""
+    import shutil
+    import subprocess
+    import webbrowser
+    from pathlib import Path
+    candidatos = []
+    if os.name == "nt":
+        for base in (os.environ.get("PROGRAMFILES(X86)"), os.environ.get("PROGRAMFILES"), os.environ.get("LOCALAPPDATA")):
+            if base:
+                candidatos += [Path(base, "Microsoft", "Edge", "Application", "msedge.exe"),
+                               Path(base, "Google", "Chrome", "Application", "chrome.exe")]
+    else:
+        candidatos += [shutil.which(n) for n in ("microsoft-edge", "google-chrome", "chromium", "chromium-browser")]
+    for navegador in candidatos:
+        if navegador and Path(navegador).exists():
+            subprocess.Popen([str(navegador), f"--app={url}", "--window-size=1320,900"])
+            return Path(navegador).stem
+    webbrowser.open(url)
+    return "navegador"
+
+
+def cmd_app(args):
+    """Todo en uno para quien no usa la terminal (es lo que abre el acceso directo «Guardián IA»)."""
+    import subprocess
+    import threading
+
+    from .servicio import ServicioGuardian, ServidorServicio
+    orden = _orden_web(args.puerto, sin_navegador=True)
+    if orden is None:
+        return 1
+    print(f"{NEGRITA}🛡️  Guardián IA {__version__}{FIN}")
+    servidor = None
+    try:
+        servicio = ServicioGuardian(_crear_escudo(args.ia, args.modelo_detector),
+                                    _crear_aduana(args.ia, args.modelo_detector),
+                                    cliente_mejorador=_cliente_local(args.modelo_detector) if args.ia else None)
+        servidor = ServidorServicio(servicio, args.puerto_servicio, silencioso=True)
+        threading.Thread(target=servidor.serve_forever, daemon=True).start()
+        print(f"  {VERDE}✓{FIN} Servicio para la extensión del navegador encendido (127.0.0.1:{args.puerto_servicio})")
+        print(f"    {GRIS}Clave para pegar UNA vez en las opciones de la extensión:{FIN} {AMARILLO}{servidor.clave}{FIN}")
+    except OSError:
+        print(f"  {GRIS}• El servicio de la extensión ya estaba encendido (o el puerto {args.puerto_servicio} está "
+              f"ocupado).{FIN}")
+    url = f"http://127.0.0.1:{args.puerto}"
+    web = subprocess.Popen(orden, cwd=_ruta_web().parent)
+    try:
+        if _esperar_web(url):
+            como = "" if args.sin_ventana else _abrir_como_app(url)
+            print(f"  {VERDE}✓{FIN} Web abierta en {url}" + (f" ({como})" if como else "") + f" {GRIS}(solo este PC){FIN}")
+        else:
+            print(f"  {AMARILLO}!{FIN} La web tarda en arrancar: ábrela tú en {url}")
+        print(f"{GRIS}Deja esta ventana abierta mientras uses el Guardián. Para cerrarlo todo: Ctrl+C o cierra la "
+              f"ventana.{FIN}", flush=True)
+        return web.wait()
+    except KeyboardInterrupt:
+        web.terminate()
+        return 0
+    finally:
+        if servidor is not None:
+            servidor.shutdown()
+            servidor.server_close()
 
 
 def _cuantos(n: int, uno: str, varios: str) -> str:
@@ -745,6 +837,14 @@ def main(argv=None):
     s.add_argument("--puerto", type=int, default=8501)
     s.add_argument("--sin-navegador", action="store_true", help="no abrir el navegador solo")
     s.set_defaults(func=cmd_web)
+
+    s = sub.add_parser("app", help="todo en uno: la web en su propia ventana y el servicio para la extensión")
+    s.add_argument("--puerto", type=int, default=8501, help="puerto de la web (por defecto 8501)")
+    s.add_argument("--puerto-servicio", type=int, default=8788, help="puerto del servicio de la extensión")
+    s.add_argument("--ia", action="store_true", help="usar también la IA local (nombres, direcciones, ataques)")
+    s.add_argument("--modelo-detector", default=None)
+    s.add_argument("--sin-ventana", action="store_true", help="no abrir la ventana (por ejemplo, para probarlo)")
+    s.set_defaults(func=cmd_app)
 
     s = sub.add_parser("informe", help="lo que ha hecho el Guardián estos días: datos tapados, trampas y avisos")
     s.add_argument("--dias", type=int, default=30, help="cuántos días mirar (0 = todo el registro; por defecto 30)")
