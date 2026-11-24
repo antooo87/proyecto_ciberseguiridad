@@ -89,7 +89,7 @@ REGLAS = [
     Regla("PASAPORTE", re.compile(
         r"(?i)\b(?:pasaporte|passport)\b[^\d\n]{0,25}?\b([A-Z]{2,3}[ -]?\d{6})\b"), prioridad=7, grupo=1),
     Regla("FECHA_NACIMIENTO", re.compile(
-        r"(?i)\b(?:fecha de nacimiento|f\. ?(?:de )?nac(?:imiento)?\.?|nac[ií]d[oa] el|nac[ií] el|"
+        r"(?i)\b(?:(?:fecha|f\.) ?(?:de )?nac(?:imiento)?\b\.?|nac[ií]d[oa] el|nac[ií] el|"
         r"date of birth|birth ?date|d\.?o\.?b\.?)[^\d\n]{0,15}?"
         r"(\d{1,2}[/.-]\d{1,2}[/.-](?:19|20)?\d{2}|\d{1,2} de (?:enero|febrero|marzo|abril|mayo|junio|julio|"
         r"agosto|se?ptiembre|octubre|noviembre|diciembre)(?: de)? \d{4})\b"), v.fecha_valida, prioridad=6, grupo=1),

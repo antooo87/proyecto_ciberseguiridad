@@ -80,6 +80,8 @@ def test_tipos_espanoles_nuevos():
         "Mi pasaporte es PAA123456 y caduca en 2030": ("PASAPORTE", "PAA123456"),
         "Fecha de nacimiento: 12/03/1990": ("FECHA_NACIMIENTO", "12/03/1990"),
         "Nací el 3 de mayo de 1999 en Sevilla": ("FECHA_NACIMIENTO", "3 de mayo de 1999"),
+        "Fecha nac.: 05/11/1985 (como en los formularios)": ("FECHA_NACIMIENTO", "05/11/1985"),
+        "Fecha de nac. 21/12/1985": ("FECHA_NACIMIENTO", "21/12/1985"),
     }
     for texto, (tipo, dato) in casos.items():
         r = Escudo().proteger(texto)
@@ -95,6 +97,7 @@ def test_tipos_nuevos_no_tapan_lo_que_solo_se_parece():
         "La referencia PAA123456 del almacén",  # sin la palabra pasaporte
         "La reunión es el 12/03/2026",  # una fecha cualquiera
         "Fecha de nacimiento: 45/13/1990",  # día y mes imposibles
+        "La fecha nacional del examen es el 12/06/2026",  # «nac» dentro de otra palabra
     ]
     for t in textos:
         assert Escudo().proteger(t).protegido == t, t
