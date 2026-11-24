@@ -172,5 +172,18 @@ def test_guardian_la_ia_solo_lee_lo_que_tu_ves(tmp_path):
 def test_leer_detecta_el_tipo():
     assert leer(b"hola", "nota.txt").formato == "texto"
     assert leer(crear_docx([parrafo("hola")])).formato == "word"  # sin nombre: lo sabe por el contenido
-    with pytest.raises(ErrorLectura, match="no soportado"):
+    with pytest.raises(ErrorLectura, match="roto"):  # los .xlsx ya se leen; este zip está roto
         leer(b"PK\x03\x04", "tabla.xlsx")
+    with pytest.raises(ErrorLectura, match="no soportado"):  # el formato antiguo de Excel, no
+        leer(b"\xd0\xcf\x11\xe0", "tabla.xls")
+
+
+def test_word_con_doctype_escondido_tras_un_comentario_largo_se_rechaza():
+    # El DOCTYPE va después de 5.000 caracteres, fuera de la primera comprobación rápida: lo para defusedxml
+    relleno = "<!--" + "a" * 5000 + "-->"
+    datos = BytesIO()
+    with zipfile.ZipFile(datos, "w") as z:
+        z.writestr("word/document.xml",
+                   f'<?xml version="1.0"?>{relleno}<!DOCTYPE x [<!ENTITY a "aaaa">]><x>&a;</x>')
+    with pytest.raises(ErrorLectura, match="peligrosas"):
+        lectores.leer_docx(datos.getvalue())

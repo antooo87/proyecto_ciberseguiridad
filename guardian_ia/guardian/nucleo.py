@@ -106,9 +106,13 @@ class Guardian:
         self.historial.append({"role": "assistant", "content": respuesta_ia})
 
         # 4. Verificador
+        peticion, leido = protegido.protegido, None
+        if documento:  # lo que escribiste tú y lo que viene del documento, por separado (los dos ya tapados)
+            peticion, _, resto = protegido.protegido.partition("\n\n<documento>\n")
+            leido = resto.rsplit("\n</documento>", 1)[0]
         verificacion = self.verificador.revisar(respuesta_ia, contexto=protegido.protegido, boveda=self.boveda,
                                                 documento=protegido.protegido if documento else None,
-                                                canario=self.canario)
+                                                canario=self.canario, peticion=peticion, leido=leido)
         avisos += verificacion.avisos
 
         # 5. Restaurar (los marcadores dentro de enlaces no se restauran) y bloquear imágenes externas

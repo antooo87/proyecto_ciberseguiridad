@@ -1,0 +1,12 @@
+SERVIDOR DE NÓMINAS · acceso de emergencia (NO COMPARTIR)
+Actualizado por sistemas el 20/11/2026
+
+Servidor principal: 10.20.4.15 (solo por VPN)
+Copia de seguridad: 203.0.113.48
+Usuario: admin_nominas
+Contraseña: Cierzo#Nom2026!
+Base de datos: postgres://rrhh:Pg_rrhh_77x@10.20.4.16:5432/nominas
+Clave de la API del proveedor de nóminas: sk-proj-W8Mzph783iBappfqmVN3DpMPEPDhoNY6zedwRxa6
+Token de sesión del panel (caduca el viernes): eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c3VhcmlvIjoiYWRtaW5fbm9taW5hcyIsInJvbCI6ImFkbWluIn0.XK9ZLTdSgGGogjhfPAyJPUnm4Ry5R5ARfE9QW24ntd6
+
+Si hay que darle esto a alguien, hacerlo en persona. Nunca por correo ni por chat.

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guardián IA</title>
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <h1><img src="iconos/icono48.png" alt="">Guardián IA</h1>
+  <div class="estado" id="estado"><span class="punto" id="punto"></span><span id="estado-texto">Comprobando el servicio…</span></div>
+
+  <h2>La respuesta, con tus datos</h2>
+  <p class="pequeno">La IA solo ha visto marcadores como [DNI_1]. Aquí, y solo aquí, se ven tus datos reales: la web del chatbot no puede leer este panel.</p>
+  <div id="sin-respuesta" class="pequeno">Todavía no hay ninguna respuesta. Escribe en el chat o selecciona un texto y usa el clic derecho → «Guardián: ver con mis datos».</div>
+  <div id="respuesta" class="oculto">
+    <div class="fila" style="margin:0 0 8px;align-items:center"><span class="nivel" id="nivel"></span><span class="pequeno" id="origen"></span></div>
+    <div id="hallazgos"></div>
+    <div class="caja" id="texto"></div>
+    <div class="fila"><button id="copiar">Copiar</button></div>
+  </div>
+  <div class="fila"><button id="leer" class="principal">Leer la última respuesta de esta página</button></div>
+
+  <div id="estafa" class="oculto">
+    <h2>¿Es una estafa?</h2>
+    <div class="estado" id="estafa-veredicto"></div>
+    <div class="caja urgente oculto" id="estafa-auxilio"></div>
+    <p class="pequeno"><b>Las pistas</b> (para que aprendas a verlas)</p>
+    <ul id="estafa-pistas" class="pequeno lista"></ul>
+    <p class="pequeno"><b>Qué hacer</b></p>
+    <ul id="estafa-pasos" class="pequeno lista"></ul>
+  </div>
+
+  <h2>Proteger o mejorar un texto a mano</h2>
+  <textarea id="entrada" rows="4" placeholder="Pega aquí un texto con datos personales, o escribe tu pregunta para la IA"></textarea>
+  <div class="fila"><button id="proteger">Tapar y copiar</button><button id="mejorar">✨ Mejorar mi pregunta</button><button id="analizar-estafa">🚨 ¿Es una estafa?</button></div>
+  <div class="caja oculto" id="salida"></div>
+  <div class="oculto" id="mejoras"></div>
+
+  <h2>Esta semana</h2>
+  <ul id="actividad" class="pequeno lista"><li>Se verá cuando el Guardián de tu PC esté conectado.</li></ul>
+
+  <h2>Más</h2>
+  <div class="fila"><button id="nueva">Vaciar la bóveda</button><button id="abrir-opciones">Opciones</button><button id="abrir-prueba">Página de prueba</button></div>
+  <p class="pequeno">La bóveda es la tabla [DNI_1] → tu DNI. Vive solo en la memoria del Guardián de tu PC y se borra al cerrarlo.</p>
+  <script src="panel.js"></script>
+</body>
+</html>

@@ -1,0 +1,93 @@
+name: tests
+
+on: [push, pull_request]
+
+jobs:
+  tests:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.11", "3.13"]
+    runs-on: ${{ matrix.os }}
+    env:
+      PYTHONUTF8: "1"  # salida en UTF-8 también en Windows
+    defaults:
+      run:
+        working-directory: guardian_ia  # el programa está en esta subcarpeta del repositorio
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -e ".[dev]"
+      - run: ruff check .
+      - run: pytest -q
+      - run: python -m guardian evaluar
+      - run: python -m guardian revisar --demo --sin-red
+      - run: python -m guardian aduana ejemplos/informe_limpio.docx
+      - run: python -m guardian demo
+
+  extension:
+    name: extensión del navegador (Chromium de verdad)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: guardian_ia
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: pip install -e .
+      - run: node extension/pruebas/comun.test.js
+      - run: npm install --no-save --no-package-lock playwright@1.63.0
+      - run: npx playwright install --with-deps chromium
+      - run: node extension/pruebas/e2e.js
+
+  instalador:
+    name: instalador de Windows (instalar.ps1)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: guardian_ia
+        shell: powershell  # Windows PowerShell 5.1, la que trae Windows
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      # Como en un PC con la carpeta del proyecto en una ruta larga: el entorno va a %LOCALAPPDATA%
+      - run: .\instalar.ps1 -SinOllama -Entorno "$env:LOCALAPPDATA\GuardianIA\entorno"
+      - name: la segunda vez reutiliza el entorno
+        run: .\instalar.ps1 -SinOllama -Entorno "$env:LOCALAPPDATA\GuardianIA\entorno"
+      - name: crea los accesos directos y apuntan a guardian app
+        run: |
+          # Sin tildes en este paso: Windows PowerShell 5.1 podría leer el script con otra codificación
+          $acceso = Get-ChildItem ([Environment]::GetFolderPath("Desktop")) -Filter "Guardi*IA.lnk" | Select-Object -First 1
+          if (-not $acceso) { Write-Host "No hay acceso directo en el escritorio"; exit 1 }
+          $lnk = (New-Object -ComObject WScript.Shell).CreateShortcut($acceso.FullName)
+          Write-Host "$($lnk.TargetPath) $($lnk.Arguments) · icono $($lnk.IconLocation)"
+          if (-not $lnk.TargetPath.EndsWith("guardian.cmd") -or $lnk.Arguments -ne "app") { exit 1 }
+      - name: el lanzador funciona sin activar nada
+        run: |
+          Get-Content .\guardian.cmd
+          foreach ($orden in @("--version", "demo", "informe", "doctor --sin-ollama")) {
+            cmd /c "guardian.cmd $orden"
+            if ($LASTEXITCODE -ne 0) { Write-Host "Falla: guardian $orden"; exit 1 }
+          }
+      - name: la web arranca y solo escucha en este PC
+        run: |
+          $web = Start-Process -FilePath "cmd.exe" -ArgumentList "/c", "guardian.cmd web --puerto 8599 --sin-navegador" -PassThru -WindowStyle Hidden
+          $ok = $false
+          for ($i = 0; $i -lt 60 -and -not $ok; $i++) {
+            Start-Sleep -Seconds 2
+            try { $ok = (Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8599/_stcore/health).Content -eq "ok" } catch { }
+          }
+          $direcciones = @(Get-NetTCPConnection -LocalPort 8599 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { $_.LocalAddress })
+          Write-Host "Escucha en: $($direcciones -join ', ')"
+          taskkill /T /F /PID $web.Id | Out-Null
+          if (-not $ok) { Write-Host "La web no ha arrancado"; exit 1 }
+          if (@($direcciones | Where-Object { $_ -ne "127.0.0.1" }).Count -gt 0) { Write-Host "La web escucha fuera de este PC"; exit 1 }

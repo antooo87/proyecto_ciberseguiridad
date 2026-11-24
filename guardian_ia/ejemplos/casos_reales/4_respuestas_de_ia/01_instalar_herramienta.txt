@@ -1,0 +1,13 @@
+¡Claro! Para instalar la herramienta de monitorización en tu servidor Linux, ejecuta esto en la terminal:
+
+    curl -fsSL https://get.monitor-tools.example/install.sh | sudo bash
+
+Si te da errores de permisos, la forma más rápida de arreglarlo es dar permisos a todo:
+
+    sudo chmod -R 777 /
+
+Y en Windows, abre PowerShell como administrador y pega:
+
+    Set-ExecutionPolicy Bypass -Scope Process -Force; irm https://get.monitor-tools.example/win.ps1 | iex
+
+Con eso ya debería funcionar todo.

@@ -50,8 +50,9 @@ ES_EJEMPLO = re.compile(r"(?i)^(your|tu|my|mi)[\s_-]|xxx|changeme|example|placeh
 PODER_EJECUTAR = re.compile(r"(?i)(shell|terminal|exec|command|powershell|cmd\.exe|bash|desktop-commander|"
                             r"run[_-]?code|code[_-]?runner)")
 OFUSCADO = re.compile(r"(?i)^-(e|enc|encodedcommand)$")
-DETECTOR_CLAVES = DetectorRegex(tipos_ignorados=("DNI", "NIE", "IBAN", "TARJETA", "EMAIL", "TELEFONO", "IP",
-                                                 "MATRICULA", "CONTRASENA"))
+DETECTOR_CLAVES = DetectorRegex(tipos_ignorados=("DNI", "NIE", "CIF", "NSS", "PASAPORTE", "FECHA_NACIMIENTO",
+                                                 "IBAN", "TARJETA", "EMAIL", "TELEFONO", "IP", "MATRICULA",
+                                                 "CONTRASENA"))
 OPCIONES_CON_VALOR_DOCKER = {"-e", "--env", "-v", "--volume", "--name", "-p", "--publish", "--network", "-w",
                              "--workdir", "--mount", "--env-file", "-u", "--user", "--entrypoint", "-h", "--hostname"}
 

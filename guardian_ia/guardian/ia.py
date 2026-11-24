@@ -82,7 +82,12 @@ class ClienteIA:
         try:
             modelos = [m.model for m in self._cliente.list().models]
         except Exception as e:
-            return {"ok": False, "detalle": f"Ollama no responde: {e}"}
+            if not self.es_local:
+                return {"ok": False, "detalle": f"Ollama no responde en {self.host}: revisa la conexión y la clave. "
+                        f"(Detalle: {e})"}
+            return {"ok": False, "detalle": "Ollama no responde: ábrelo desde el menú Inicio (o con `ollama serve`) "
+                    "o instálalo desde https://ollama.com/download. Sin él funcionan el escudo con reglas, la aduana "
+                    "y el verificador, pero no el chat ni la detección con IA."}
         if self.modelo not in modelos:
             return {"ok": False, "detalle": f"Falta el modelo {self.modelo}. "
                     f"Descárgalo con: ollama pull {self.modelo}", "modelos": modelos}

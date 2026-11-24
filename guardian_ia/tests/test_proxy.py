@@ -290,7 +290,7 @@ def test_servidor_cuenta_en_pantalla_lo_que_ha_hecho(tmp_path, capsys):
         srv.shutdown()
         srv.server_close()
     lineas = [linea for linea in capsys.readouterr().out.splitlines() if linea.startswith("[proxy] POST")]
-    assert "datos tapados: 1 EMAIL" in lineas[0] and "nada que tapar" in lineas[1]
+    assert "datos tapados: 1 correo electrónico" in lineas[0] and "nada que tapar" in lineas[1]
     assert "ana.lopez" not in "".join(lineas)
 
 

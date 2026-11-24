@@ -7,3 +7,7 @@ __pycache__/
 build/
 registro/
 evaluacion/publicos/
+# Pruebas de la extensión (npm install --no-save playwright)
+node_modules/
+# Lanzador que crea instalar.ps1 en cada PC (apunta a su entorno)
+guardian.cmd

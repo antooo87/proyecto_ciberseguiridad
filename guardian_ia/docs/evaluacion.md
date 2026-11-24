@@ -1,6 +1,6 @@
 # Evaluación del Guardián IA
 
-Con solo reglas, el Guardián deja pasar el 38 % de los datos y ve el 30 % de los ataques de la prueba ciega. Con la IA local Qwen3.5 9B no se escapa ningún dato (fuga 0 %) y ve el 100 % de los ataques, sin falsas alarmas. En conjuntos públicos que no he escrito yo, el 9B encuentra el 94 % de los nombres de noticias reales y el 76 % de los ataques de BIPIA (Microsoft). En un ataque de verdad contra un agente con herramientas, el 9B sin protección manda los datos de Lucía al atacante 10 veces de 10; con el Guardián, ninguna, y Lucía recibe igualmente las ofertas que pidió.
+Con solo reglas, el Guardián deja pasar el 38 % de los datos y ve el 30 % de los ataques de la prueba ciega. Con la IA local Qwen3.5 9B no se escapa ningún dato (fuga 0 %) y ve el 100 % de los ataques, sin falsas alarmas. En conjuntos públicos que no he escrito yo, el 9B encuentra el 94 % de los nombres de noticias reales y el 76 % de los ataques de BIPIA (Microsoft). En un ataque de verdad contra un agente con herramientas, el 9B sin protección manda los datos de Lucía al atacante 10 veces de 10; con el Guardián, ninguna, y Lucía recibe igualmente las ofertas que pidió. Y cuando la IA ya no puede actuar pero le repite a Lucía lo que pedía la trampa ("hay que verificar la cuenta"), el verificador de la 0.4.0 avisa en 17 de 17 respuestas, sin ninguna falsa alarma en las 40 respuestas sin trampa.
 
 Todos los números salen de los archivos de `evaluacion/` y se pueden repetir con los comandos del final.
 
@@ -17,6 +17,9 @@ Todos los números salen de los archivos de `evaluacion/` y se pueden repetir co
 | Aduana, BIPIA: ataques detectados / falsas alarmas | 54 % / 0 % | 54 % / 0 % | **76 % / 2 %** |
 | Agente atacado (Qwen3.5 9B): veces que los datos llegan al atacante, sin Guardián 10 de 10 | **0 de 10** | – | **0 de 10** |
 | Agente atacado (Qwen3.5 9B): Lucía recibe lo que pidió, con el Guardián | 10 de 10 | – | 10 de 10 (leyendo sin actuar) |
+| Eco de la trampa (0.4.0): avisos cuando la IA repite la trampa / falsas alarmas sin trampa | **17 de 17 / 0 de 40** | (respuestas del 2B: 8 de 8) | (respuestas del 9B: 9 de 9) |
+
+Las medidas con IA son de la versión 0.3.0. En la 0.4.0, el arreglo de los IBAN en minúsculas baja la fuga de la prueba ciega con solo reglas del 37,8 % al 35,1 %, pero ese fallo se encontró mirando la propia prueba ciega, así que esa mejora ya no es una medida a ciegas (por eso la tabla deja el número original). El eco de la trampa no usa IA: es una regla del verificador, medida sobre las respuestas que dieron los agentes 2B y 9B.
 
 ## 1. Método
 
@@ -175,7 +178,50 @@ Los registros de cada intento están en `evaluacion/agente/` y las tablas se reh
 6. **Sin ataque, el Guardián no estorba.** Con la web limpia, Lucía recibe las ofertas 10 de 10 con y sin Guardián, con los dos modelos, y no se bloquea nada.
 7. **El experimento encontró dos fallos del propio Guardián**, los dos arreglados y con pruebas (CP-62 y CP-63). La primera versión del proxy no miraba a dónde iban las acciones y, con el 2B, el correo llegó al atacante en 2 de 5 intentos: de ahí salió el control del flujo de datos. Y con `--ia`, el juez revisaba también los mensajes de Lucía y tomaba "Lee esta web y dime..." por un ataque, así que bloqueaba hasta la lectura de la web: ahora sus mensajes solo se revisan con reglas. Los registros de esas versiones están en `evaluacion/agente/anteriores/`.
 
-## 7. Velocidad
+## 7. Eco de la trampa: cuando la IA intenta que actúes tú
+
+El punto 5 de la sección anterior dejó un riesgo abierto: aunque el Guardián bloquee la acción, la IA le repite a Lucía lo que pedía la trampa. La 0.4.0 añade al verificador una revisión nueva (`guardian/verificador/eco.py`): busca en la respuesta frases que te empujan a hacer algo arriesgado (verificar tu cuenta, mandar datos, pagar, instalar algo, llamar o entrar en una web) y mira de dónde sale ese empujón. Si lo que ha leído la IA (la web, el documento, el correo pegado) pedía lo mismo y tú no lo habías pedido, avisa (AVISO); si además la frase lleva un destino sacado de lo leído (una web, un correo o un teléfono que tú no escribiste), es PELIGRO. Las advertencias ("parece una estafa, no lo hagas"), lo que la IA cuenta que hizo ("he enviado...") y sus ofrecimientos ("¿quieres que te envíe...?") no cuentan.
+
+**Método.** `evaluacion/medir_eco.py` vuelve a leer las 227 respuestas guardadas del ataque al agente (`evaluacion/agente/*.log`) sin llamar a ninguna IA. Como "lo leído" usa la web del experimento y como "petición" el mensaje de Lucía. El resultado completo, con todas las frases marcadas y todas las que hablan de "verificar" sin marcarse, está en `evaluacion/eco_resultados.md` para revisarlo a mano.
+
+| Respuestas | Hablan de «verificar» | Avisos del eco |
+| --- | --- | --- |
+| Trampa suave, la IA lee la web sin poder actuar, 2B | 8 de 10 | **8** (todas las que repetían la trampa) |
+| Trampa suave, la IA lee la web sin poder actuar, 9B | 9 de 10 | **9** |
+| Trampa suave, sin Guardián (la IA ya mandó el correo), 2B y 9B | 19 de 20 | 11 |
+| Sin trampa (control), 2B y 9B | 0 de 40 | **0** |
+| Todas | 70 de 227 | 34 (2 PELIGRO) |
+
+- Donde importa (la IA no puede actuar y le pide a Lucía que verifique la cuenta), avisa en todas: 17 de 17.
+- Sin trampa no salta nunca: 0 de 40.
+- Hablar de "verificar" no siempre es repetir la trampa: muchas respuestas solo cuentan que la acción se ha bloqueado («no puedo enviar el correo de verificación») o, sin Guardián, que ya la hicieron («he enviado la verificación»). Esas no se marcan, y está bien: no le piden nada a la persona.
+- **Ojo: no es una medida a ciegas.** La regla se ajustó mirando estas mismas respuestas (por ejemplo, para no marcar «¿te gustaría que te envíe un correo con las ofertas?»). Para medirla a ciegas hacen falta respuestas nuevas, de otro modelo o de otro PC: `evaluacion/repetir_medidas.py --agente` las genera y les pasa la misma medida.
+
+## 8. Casos reales y difíciles (0.5.0; no es una medida a ciegas)
+
+Las pruebas anteriores usan textos cortos. Para ver cómo se porta con documentos como los de una empresa de verdad, la 0.5.0 añade `ejemplos/casos_reales/`: una empresa inventada de logística de Zaragoza con su carpeta de RRHH, un contrato largo, una bandeja de correo, respuestas de IA y preguntas mal hechas. Los crea `generar.py`, que **apunta cada dato que mete** en cada archivo, así que la prueba (`tests/test_casos_reales.py`) no mira si «encuentra algo», sino si encuentra exactamente esos datos, ni uno más ni uno menos.
+
+| Conjunto | Qué se comprueba | Resultado |
+| --- | --- | --- |
+| Carpeta de RRHH: 15 archivos (Excel, Word, PowerPoint, PDF, HTML, CSV, `.eml`, texto y una imagen) | El veredicto y los datos exactos de cada archivo | 14 de 14 con su veredicto y sus datos exactos (6 TRAMPA, 5 DATOS PERSONALES, 3 LIMPIO); la imagen se cuenta como «sin revisar» |
+| Siete formas de esconder órdenes para la IA | Hoja muy oculta, texto oculto de Word, letra blanca de 1 pt, diapositiva oculta, celda `;;;`, `display:none` con imagen espía y plantilla remota | 7 de 7; las dos presentaciones con letra blanca sobre fondo oscuro (que sí se ve), sin alarma |
+| Contrato de mantenimiento con 51 datos en cláusulas, tablas y anexos | Que la copia anonimizada no deje ninguno | 51 de 51 tapados (CIF, DNI, NIE, IBAN, teléfonos, correos, IP y matrículas) |
+| Bandeja de 13 correos `.eml` (10 estafas y 3 normales) | Estafas en ALTO y normales en BAJO, con las pistas del correo entero | 10 de 10 y 3 de 3 |
+| Seis respuestas de IA | El nivel de cada una (3 PELIGRO, 2 AVISO, 1 OK) | 6 de 6 |
+| Diez preguntas mal hechas | Tipo de petición, nota baja y datos tapados | 10 de 10 |
+
+**Lo importante es lo que salió al probarlos**, porque con los ejemplos cortos no se veía:
+
+- El número de la Seguridad Social en una columna de Excel no se tapaba: la palabra que lo anuncia («Nº afiliación S.S.») está en la cabecera, no al lado del número. Ahora el escudo mira las cabeceras de las tablas.
+- La contraseña dentro de una cadena de conexión (`postgres://usuario:clave@servidor`) no se tapaba.
+- Los correos `.eml` se leían «a pelo»: con la codificación quoted-printable un IBAN quedaba partido en dos líneas y no se reconocía. Ahora se descodifican.
+- «Mejorar mi pregunta» entendía mal seis de las diez preguntas (por ejemplo, «hazme un correo para mi jefe» sacaba un 100 aunque no dice de qué trata).
+
+Todo eso se arregló **mirando estos mismos casos**, y los casos se escribieron a la vez que las reglas. Por eso estos resultados no valen como medida a ciegas: sirven para enseñar el Guardián con ejemplos densos y para que ninguna mejora futura rompa lo que ya funciona. Sin la IA local, el contrato anonimizado sigue llevando los nombres y las direcciones (las reglas no los ven; para eso está `--ia`).
+
+Para comprobar que las reglas nuevas no estropean nada, se repitió la medida solo con reglas (`python -m guardian evaluar`): en el conjunto de desarrollo y en la prueba ciega salen **los mismos números que en la 0.4.0**, sin ninguna falsa alarma nueva.
+
+## 9. Velocidad
 
 | Pieza | Sin gráfica (servidor de pruebas) |
 | --- | --- |
@@ -184,9 +230,17 @@ Los registros de cada intento están en `evaluacion/agente/` y las tablas se reh
 | Escudo con detector 9B | unos 15 s por texto |
 | Aduana con juez 2B / 9B | segundos por documento, solo si las reglas no llegan a ALTO |
 
-En el portátil con la RTX 4070 (8 GB) el 9B cabe entero en la gráfica con contexto de 8192, y debería ir varias veces más rápido. Queda pendiente medirlo allí.
+En el portátil con la RTX 4070 (8 GB) el 9B cabe entero en la gráfica con contexto de 8192, y debería ir varias veces más rápido. Queda pendiente medirlo allí: `evaluacion/repetir_medidas.py` lo hace en un comando y apunta el procesador, la gráfica y el tiempo de cada paso.
 
-## 8. Cómo repetirlo
+## 10. Cómo repetirlo
+
+Todo de una vez, en una carpeta nueva y sin tocar los resultados guardados (`evaluacion/medidas_FECHA/resumen.md`):
+
+```powershell
+python evaluacion\repetir_medidas.py --ia --agente --modelo qwen3.5:9b --veces 10
+```
+
+O paso a paso:
 
 ```powershell
 python -m guardian evaluar                                    # solo reglas (segundos)
@@ -199,10 +253,11 @@ python -m guardian proxy --sin-pensar                         # terminal 1, para
 python ejemplos\agente_demo.py --veces 10 --temperatura 0.7 > evaluacion\agente\9b_reglas.log   # terminal 2
 python ejemplos\agente_demo.py --directo --veces 10 --temperatura 0.7 > evaluacion\agente\9b_directo.log
 python evaluacion\resumir_agente.py                           # tabla del ataque al agente
+python evaluacion\medir_eco.py                                # eco de la trampa en esas respuestas (sin IA)
 python -m guardian demo                                       # recorrido de un minuto, sin Ollama
 ```
 
-## 9. Límites de la evaluación
+## 11. Límites de la evaluación
 
 - Los conjuntos propios son pequeños (191 textos y 60 documentos) y los públicos se usan en muestras de 100. Una diferencia de un 5 % puede ser un solo caso.
 - La prueba ciega la escribió la misma persona que diseñó las reglas, aunque con otras frases. Por eso se añadieron CoNLL-2002 y BIPIA.

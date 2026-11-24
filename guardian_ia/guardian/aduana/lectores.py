@@ -1,4 +1,4 @@
-"""Lectores de documentos para la aduana: texto, Word (.docx) y PDF.
+"""Lectores de documentos para la aduana: texto, correos (.eml), Word (.docx), PowerPoint (.pptx), Excel (.xlsx) y PDF.
 
 Un Word o un PDF pueden llevar texto que una persona NO ve pero la IA sí lee:
 letra blanca sobre fondo blanco, tamaño diminuto, texto marcado como oculto o
@@ -19,6 +19,7 @@ Los archivos se leen sin ejecutar nada y con límites de tamaño (bombas zip).
 """
 
 import io
+import posixpath
 import re
 import zipfile
 from dataclasses import dataclass, field
@@ -26,14 +27,28 @@ from pathlib import Path
 from typing import Optional, Union
 from xml.etree import ElementTree
 
+try:  # defusedxml lee el XML sin expandir entidades ni DTD (bombas XML, XXE); si no está instalado, se usa el
+    from defusedxml import ElementTree as _XMLSeguro  # lector normal con la comprobación de DOCTYPE de _xml()
+except ImportError:  # pragma: no cover
+    _XMLSeguro = None
+
 MAX_BYTES = 50 * 1024 * 1024  # 50 MB por archivo
 MAX_PARTE_ZIP = 20 * 1024 * 1024  # 20 MB descomprimidos por cada parte del Word
 MAX_PAGINAS_PDF = 300
+MAX_CELDAS_EXCEL = 200_000  # una hoja enorme se recorta: para buscar trampas no hace falta leerla entera
 MIN_OCULTO = 3  # trozos más cortos (un espacio en blanco, un punto) no cuentan
 
 W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 WP = "{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}"
 REL = "{http://schemas.openxmlformats.org/package/2006/relationships}"
+P = "{http://schemas.openxmlformats.org/presentationml/2006/main}"
+A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
+R = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
+S = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
+EXTENSIONES_WORD = (".docx", ".docm", ".dotx", ".dotm")
+EXTENSIONES_POWERPOINT = (".pptx", ".pptm", ".potx", ".potm", ".ppsx", ".ppsm")
+EXTENSIONES_EXCEL = (".xlsx", ".xlsm", ".xltx", ".xltm")
+EXTENSIONES_OFFICE = EXTENSIONES_WORD + EXTENSIONES_POWERPOINT + EXTENSIONES_EXCEL
 EXTENSIONES_TEXTO = {".txt", ".md", ".html", ".htm", ".csv", ".json", ".xml", ".eml", ".log", ".yaml", ".yml"}
 
 
@@ -59,7 +74,7 @@ class Peligro:
 class Lectura:
     texto: str
     visible: str
-    formato: str  # "texto", "word" o "pdf"
+    formato: str  # "texto", "correo", "word", "powerpoint", "excel" o "pdf"
     ocultos: list[TextoOculto] = field(default_factory=list)
     peligros: list[Peligro] = field(default_factory=list)
 
@@ -82,12 +97,36 @@ def leer(origen: Union[str, Path, bytes], nombre: Optional[str] = None) -> Lectu
     extension = Path(nombre or "").suffix.lower()
     if datos[:5] == b"%PDF-" or extension == ".pdf":
         return leer_pdf(datos)
-    if datos[:2] == b"PK" and extension in (".docx", ".docm", ".dotx", ".dotm", ""):
-        return leer_docx(datos)
-    if extension in (".doc", ".xls", ".ppt", ".pptx", ".xlsx", ".odt"):
-        raise ErrorLectura(f"Formato {extension} no soportado todavía: guárdalo como .docx, .pdf o texto.")
+    if datos[:2] == b"PK" and extension in EXTENSIONES_POWERPOINT:
+        return leer_pptx(datos)
+    if datos[:2] == b"PK" and extension in EXTENSIONES_EXCEL:
+        return leer_xlsx(datos)
+    if datos[:2] == b"PK" and extension in EXTENSIONES_WORD + ("",):
+        return _leer_office_sin_nombre(datos) if not extension else leer_docx(datos)
+    if extension == ".eml":
+        return leer_eml(datos)
+    if extension in (".doc", ".xls", ".ppt", ".odt", ".ods", ".odp", ".rtf"):
+        raise ErrorLectura(f"Formato {extension} no soportado todavía: guárdalo como .docx, .pptx, .xlsx, .pdf o "
+                           "texto.")
     texto = datos.decode("utf-8", errors="replace")
     return Lectura(texto, texto, "texto")
+
+
+def leer_eml(datos: bytes) -> Lectura:
+    """Un correo guardado: se descodifica (quoted-printable, base64, HTML) para leer lo mismo que verías tú.
+
+    Lo escondido con estilos (letra de tamaño 0, blanca, display:none) y los comentarios HTML son trucos para la IA
+    que resume el correo; un adjunto que es un programa disfrazado («factura.pdf.iso») es un peligro del archivo.
+    """
+    from ..correo import adjunto_peligroso, leer_correo  # aquí, para no cargar el módulo de correo si no hace falta
+
+    correo = leer_correo(datos)
+    ocultos = [TextoOculto(o, "comentario HTML" if o.startswith("<!--") else
+                           "texto escondido con estilos (tamaño 0, blanco o display:none)", "cuerpo del correo")
+               for o in correo.ocultos if len(o.strip()) >= MIN_OCULTO]
+    peligros = [Peligro(f"El correo trae un adjunto peligroso: {motivo}", 4)
+                for motivo in filter(None, map(adjunto_peligroso, correo.adjuntos))]
+    return Lectura(correo.como_texto(), correo.como_texto(con_ocultos=False), "correo", ocultos, peligros)
 
 
 def _limpiar_huecos(texto: str) -> str:
@@ -108,9 +147,13 @@ def _xml(z: zipfile.ZipFile, nombre: str) -> Optional[ElementTree.Element]:
     if b"<!DOCTYPE" in datos[:4096] or b"<!ENTITY" in datos[:4096]:
         raise ErrorLectura(f"La parte {nombre} trae declaraciones DOCTYPE/ENTITY: se rechaza por seguridad.")
     try:
+        if _XMLSeguro is not None:
+            return _XMLSeguro.fromstring(datos, forbid_dtd=True)
         return ElementTree.fromstring(datos)
     except ElementTree.ParseError as e:
         raise ErrorLectura(f"La parte {nombre} no es XML válido: {e}") from e
+    except ValueError as e:  # defusedxml: DTDForbidden, EntitiesForbidden...
+        raise ErrorLectura(f"La parte {nombre} trae construcciones XML peligrosas: se rechaza por seguridad.") from e
 
 
 def _hex_a_luz(valor: Optional[str]) -> Optional[float]:
@@ -319,22 +362,481 @@ def leer_docx(datos: bytes) -> Lectura:
                 lector.recorrer(raiz, lugar={"header": "encabezado", "footer": "pie de página",
                                               "comments": "comentarios"}.get(nombre, "notas"))
         texto, visible = "".join(lector.texto), "".join(lector.visible)
-
-        propiedades = _xml(z, "docProps/core.xml")
-        if propiedades is not None:
-            meta = " | ".join(" ".join(e.itertext()).strip() for e in propiedades
-                              if e.tag.rsplit("}", 1)[-1] in ("title", "subject", "description", "keywords")
-                              and "".join(e.itertext()).strip())
-            if meta:
-                texto += f"\n[Propiedades del documento] {meta}\n"
-                lector.ocultos.append(TextoOculto(meta, "metadatos (propiedades del archivo)",
-                                                  "propiedades del documento", truco=False))
-        peligros = _relaciones_peligrosas(z)
-        if any(n.lower().endswith("vbaproject.bin") for n in z.namelist()):
-            peligros.append(Peligro("El documento trae MACROS (vbaProject.bin): no las actives si no sabes de "
-                                    "dónde viene.", 2))
+        texto += _metadatos_office(z, lector.ocultos)
+        peligros = _peligros_office(z)
     ocultos = [o for o in lector.ocultos if len(o.texto.strip()) >= MIN_OCULTO]
     return Lectura(texto, _limpiar_huecos(visible), "word", ocultos, peligros)
+
+
+def _metadatos_office(z: zipfile.ZipFile, ocultos: list[TextoOculto]) -> str:
+    """Título, asunto, descripción y palabras clave del archivo: no se ven, pero hay programas que se los pasan a la IA."""
+    propiedades = _xml(z, "docProps/core.xml")
+    if propiedades is None:
+        return ""
+    meta = " | ".join(" ".join(e.itertext()).strip() for e in propiedades
+                      if e.tag.rsplit("}", 1)[-1] in ("title", "subject", "description", "keywords")
+                      and "".join(e.itertext()).strip())
+    if not meta:
+        return ""
+    ocultos.append(TextoOculto(meta, "metadatos (propiedades del archivo)", "propiedades del documento", truco=False))
+    return f"\n[Propiedades del documento] {meta}\n"
+
+
+def _peligros_office(z: zipfile.ZipFile) -> list[Peligro]:
+    peligros = _relaciones_peligrosas(z)
+    if any(n.lower().endswith("vbaproject.bin") for n in z.namelist()):
+        peligros.append(Peligro("El documento trae MACROS (vbaProject.bin): no las actives si no sabes de "
+                                "dónde viene.", 2))
+    return peligros
+
+
+def _leer_office_sin_nombre(datos: bytes) -> Lectura:
+    """Bytes de un zip sin nombre de archivo: se mira por dentro si es un Word, un PowerPoint o un Excel."""
+    try:
+        with zipfile.ZipFile(io.BytesIO(datos)) as z:
+            nombres = set(z.namelist())
+    except zipfile.BadZipFile as e:
+        raise ErrorLectura("No es un documento de Office válido (el zip está roto).") from e
+    if "ppt/presentation.xml" in nombres:
+        return leer_pptx(datos)
+    if "xl/workbook.xml" in nombres:
+        return leer_xlsx(datos)
+    return leer_docx(datos)
+
+
+def _destinos(z: zipfile.ZipFile, parte: str) -> dict[str, str]:
+    """Relaciones internas de una parte (rId -> ruta dentro del zip). Ej.: rId2 -> ppt/slides/slide1.xml."""
+    carpeta, nombre = posixpath.split(parte)
+    raiz = _xml(z, posixpath.join(carpeta, "_rels", nombre + ".rels"))
+    destinos = {}
+    for rel in raiz.iter(REL + "Relationship") if raiz is not None else ():
+        if rel.get("TargetMode") == "External":
+            continue
+        destino = rel.get("Target", "")
+        ruta = destino.lstrip("/") if destino.startswith("/") else posixpath.normpath(posixpath.join(carpeta, destino))
+        destinos[rel.get("Id", "")] = ruta
+    return destinos
+
+
+def _texto_de(elem: Optional[ElementTree.Element]) -> str:
+    return " ".join(" ".join(elem.itertext()).split()) if elem is not None else ""
+
+
+def _juntar_oculto(ocultos: list[TextoOculto], texto: str, motivo: str, lugar: str, truco: bool = True) -> None:
+    """Trozos seguidos con el mismo motivo en el mismo sitio van juntos."""
+    ultimo = ocultos[-1] if ocultos else None
+    if ultimo and ultimo.motivo == motivo and ultimo.lugar == lugar and ultimo.truco == truco:
+        ultimo.texto += " " + texto
+    else:
+        ocultos.append(TextoOculto(texto, motivo, lugar, truco))
+
+
+# ---------------------------------------------------------------- PowerPoint (.pptx)
+def _luz_drawingml(nodo: Optional[ElementTree.Element]) -> Optional[float]:
+    """Luz (0 negro, 1 blanco) del primer color que haya dentro de un relleno de PowerPoint. None si no se sabe."""
+    if nodo is None:
+        return None
+    for elem in nodo.iter():
+        etiqueta = elem.tag
+        if etiqueta == A + "srgbClr":
+            return _hex_a_luz(elem.get("val"))
+        if etiqueta == A + "schemeClr":
+            valor = elem.get("val", "")
+            return 1.0 if valor in ("bg1", "lt1", "bg2", "lt2") else 0.0 if valor in ("tx1", "dk1", "tx2", "dk2") else None
+        if etiqueta == A + "sysClr":
+            return _hex_a_luz(elem.get("lastClr"))
+        if etiqueta == A + "prstClr":
+            return {"white": 1.0, "black": 0.0}.get(elem.get("val", ""))
+    return None
+
+
+def _fondo_oscuro_pptx(raices: list[Optional[ElementTree.Element]]) -> bool:
+    """¿El fondo de la diapositiva es oscuro (o una imagen)? Se mira la diapositiva, su diseño y su patrón."""
+    for raiz in raices:
+        if raiz is None:
+            continue
+        fondo = raiz.find(f"{P}cSld/{P}bg")
+        if fondo is not None:
+            if fondo.find(f".//{A}blipFill") is not None or fondo.find(f".//{A}gradFill") is not None:
+                return True  # una foto o un degradado: puede ser oscuro, mejor no dar falsas alarmas
+            luz = _luz_drawingml(fondo)
+            return luz is None or luz < 0.5
+    for raiz in raices:  # sin fondo propio: si el patrón cambia los colores (bg1 = dk1), el tema es oscuro
+        mapa = raiz.find(P + "clrMap") if raiz is not None else None
+        if mapa is not None:
+            return mapa.get("bg1") == "dk1"
+    return False
+
+
+def _forma_con_relleno(forma: ElementTree.Element) -> Optional[float]:
+    """Luz del relleno de una forma: 0.0 = oscuro o desconocido (la letra blanca se vería); 1.0 = claro; None = sin relleno."""
+    sppr = forma.find(P + "spPr")
+    if sppr is not None:
+        if sppr.find(A + "noFill") is not None:
+            return None
+        if sppr.find(A + "solidFill") is not None:
+            luz = _luz_drawingml(sppr.find(A + "solidFill"))
+            return 0.0 if luz is None else luz
+        if any(sppr.find(A + x) is not None for x in ("gradFill", "blipFill", "pattFill")):
+            return 0.0
+    estilo = forma.find(f"{P}style/{A}fillRef")
+    if estilo is not None and estilo.get("idx", "0") != "0":
+        return 0.0  # relleno del tema (azul, naranja...): la letra blanca se ve
+    return None
+
+
+class _LectorDiapositiva:
+    def __init__(self, numero: int, ancho: int, alto: int, fondo_oscuro: bool, oculta: bool):
+        self.lugar = f"diapositiva {numero}"
+        self.ancho, self.alto = ancho, alto
+        self.fondo_oscuro = fondo_oscuro
+        self.oculta = oculta
+        self.texto: list[str] = []
+        self.visible: list[str] = []
+        self.ocultos: list[TextoOculto] = []
+
+    def recorrer(self, arbol: ElementTree.Element, nivel: int = 0, motivo_forma: Optional[str] = None,
+                 relleno: Optional[float] = None, en_tabla: bool = False) -> None:
+        for forma in arbol:
+            etiqueta = forma.tag.rsplit("}", 1)[-1]
+            if etiqueta not in ("sp", "grpSp", "graphicFrame", "pic", "cxnSp"):
+                continue
+            nv = forma.find(f"{P}nvSpPr/{P}cNvPr")
+            if nv is None:
+                nv = next((e for e in forma.iter(P + "cNvPr")), None)
+            motivo = motivo_forma
+            if motivo is None and nv is not None and nv.get("hidden") in ("1", "true"):
+                motivo = "forma oculta (no se ve en la diapositiva)"
+            if motivo is None and nivel == 0:
+                motivo = self._fuera(forma)
+            if nv is not None and len((nv.get("descr") or "").strip()) >= MIN_OCULTO:
+                alt = nv.get("descr").strip()
+                self.texto.append(f"\n[Texto alternativo de imagen] {alt}\n")
+                self.ocultos.append(TextoOculto(alt, "texto alternativo de una imagen", self.lugar, truco=False))
+            if etiqueta == "grpSp":
+                self.recorrer(forma, nivel + 1, motivo, relleno, en_tabla)
+            elif etiqueta == "graphicFrame":
+                for celda in forma.iter(A + "tc"):
+                    for parrafo in celda.iter(A + "p"):
+                        self._parrafo(parrafo, motivo, None, en_tabla=True)
+            elif etiqueta == "sp":
+                propio = _forma_con_relleno(forma)
+                cuerpo = forma.find(P + "txBody")
+                for parrafo in cuerpo.iter(A + "p") if cuerpo is not None else ():
+                    self._parrafo(parrafo, motivo, propio if propio is not None else relleno, en_tabla)
+
+    def _fuera(self, forma: ElementTree.Element) -> Optional[str]:
+        xfrm = forma.find(f"{P}spPr/{A}xfrm")
+        if xfrm is None:
+            xfrm = forma.find(f"{P}grpSpPr/{A}xfrm")
+        if xfrm is None:
+            xfrm = forma.find(P + "xfrm")
+        off, ext = (xfrm.find(A + "off"), xfrm.find(A + "ext")) if xfrm is not None else (None, None)
+        if off is None or ext is None or not self.ancho:
+            return None
+        try:
+            x, y = int(off.get("x", 0)), int(off.get("y", 0))
+            cx, cy = int(ext.get("cx", 0)), int(ext.get("cy", 0))
+        except ValueError:
+            return None
+        if x >= self.ancho or y >= self.alto or x + cx <= 0 or y + cy <= 0:
+            return "fuera de la diapositiva"
+        return None
+
+    def _parrafo(self, parrafo: ElementTree.Element, motivo_forma: Optional[str], relleno: Optional[float],
+                 en_tabla: bool) -> None:
+        for run in parrafo:
+            etiqueta = run.tag
+            if etiqueta == A + "br":
+                self.texto.append("\n")
+                self.visible.append("\n")
+                continue
+            if etiqueta not in (A + "r", A + "fld"):
+                continue
+            trozo = "".join(t.text or "" for t in run.iter(A + "t"))
+            if not trozo:
+                continue
+            self.texto.append(trozo)
+            motivo = motivo_forma or self._motivo_run(run.find(A + "rPr"), relleno, en_tabla)
+            if motivo is None and not self.oculta:
+                self.visible.append(trozo)
+            elif motivo is not None:
+                truco = not motivo.startswith("forma oculta")
+                _juntar_oculto(self.ocultos, trozo, motivo, self.lugar, truco)
+            else:
+                _juntar_oculto(self.ocultos, trozo, "diapositiva oculta (no sale al presentar)", self.lugar, False)
+        self.texto.append("\n")
+        self.visible.append("\n")
+
+    def _motivo_run(self, rpr: Optional[ElementTree.Element], relleno: Optional[float], en_tabla: bool) -> Optional[str]:
+        if rpr is None:
+            return None
+        motivos = []
+        luz = _luz_drawingml(rpr.find(A + "solidFill"))
+        fondo_claro = (relleno is not None and relleno >= 0.5) or (relleno is None and not self.fondo_oscuro)
+        if luz is not None and luz >= 0.94 and fondo_claro and not en_tabla:
+            motivos.append("letra blanca sobre fondo blanco")
+        tam = rpr.get("sz", "")
+        if tam.isdigit() and int(tam) <= 200:
+            motivos.append(f"letra diminuta ({int(tam) / 100:g} pt)")
+        return " y ".join(motivos) or None
+
+
+def leer_pptx(datos: bytes) -> Lectura:
+    try:
+        z = zipfile.ZipFile(io.BytesIO(datos))
+    except zipfile.BadZipFile as e:
+        raise ErrorLectura("No es un .pptx válido (el zip está roto).") from e
+    with z:
+        presentacion = _xml(z, "ppt/presentation.xml")
+        if presentacion is None:
+            raise ErrorLectura("No es una presentación de PowerPoint: falta ppt/presentation.xml.")
+        tam = presentacion.find(P + "sldSz")
+        ancho = int(tam.get("cx", 0)) if tam is not None and (tam.get("cx") or "").isdigit() else 0
+        alto = int(tam.get("cy", 0)) if tam is not None and (tam.get("cy") or "").isdigit() else 0
+        rels = _destinos(z, "ppt/presentation.xml")
+        orden = [rels.get(s.get(R + "id", "")) for s in presentacion.iter(P + "sldId")]
+        diapositivas = [d for d in orden if d] or sorted(
+            (n for n in z.namelist() if re.fullmatch(r"ppt/slides/slide\d+\.xml", n)),
+            key=lambda n: int(re.search(r"(\d+)\.xml$", n).group(1)))
+        texto, visible, ocultos = [], [], []
+        for numero, parte in enumerate(diapositivas, 1):
+            raiz = _xml(z, parte)
+            if raiz is None:
+                continue
+            rels_diapo = _destinos(z, parte)
+            diseno = next((d for d in rels_diapo.values() if "slideLayouts/" in d), None)
+            raiz_diseno = _xml(z, diseno) if diseno else None
+            patron = next((d for d in _destinos(z, diseno).values() if "slideMasters/" in d), None) if diseno else None
+            raiz_patron = _xml(z, patron) if patron else None
+            lector = _LectorDiapositiva(numero, ancho, alto, _fondo_oscuro_pptx([raiz, raiz_diseno, raiz_patron]),
+                                        oculta=raiz.get("show") in ("0", "false"))
+            arbol = raiz.find(f"{P}cSld/{P}spTree")
+            if arbol is not None:
+                lector.recorrer(arbol)
+            cabecera = f"[Diapositiva {numero}]\n"
+            texto.append(cabecera + "".join(lector.texto))
+            if not lector.oculta:
+                visible.append(cabecera + "".join(lector.visible))
+            ocultos += lector.ocultos
+            notas = next((d for d in rels_diapo.values() if "notesSlides/" in d), None)
+            texto_notas = _texto_notas(_xml(z, notas)) if notas else ""
+            if len(texto_notas) >= MIN_OCULTO:
+                texto.append(f"[Notas del orador de la diapositiva {numero}] {texto_notas}\n")
+                ocultos.append(TextoOculto(texto_notas, "notas del orador (no salen en la diapositiva)",
+                                           f"diapositiva {numero}", truco=False))
+        for parte in sorted(n for n in z.namelist() if re.fullmatch(r"ppt/comments/[^/]+\.xml", n)):
+            comentario = _texto_de(_xml(z, parte))
+            if len(comentario) >= MIN_OCULTO:
+                texto.append(f"[Comentarios] {comentario}\n")
+                ocultos.append(TextoOculto(comentario, "comentarios de revisión", "comentarios", truco=False))
+        texto_final = "\n".join(texto) + _metadatos_office(z, ocultos)
+        peligros = _peligros_office(z)
+    ocultos = [o for o in ocultos if len(o.texto.strip()) >= MIN_OCULTO]
+    return Lectura(texto_final, _limpiar_huecos("\n".join(visible)), "powerpoint", ocultos, peligros)
+
+
+def _texto_notas(raiz: Optional[ElementTree.Element]) -> str:
+    """Texto de la página de notas, sin el número de diapositiva ni la miniatura."""
+    if raiz is None:
+        return ""
+    trozos = []
+    for forma in raiz.iter(P + "sp"):
+        marcador = forma.find(f"{P}nvSpPr/{P}nvPr/{P}ph")
+        if marcador is not None and marcador.get("type") in ("sldNum", "sldImg", "hdr", "ftr", "dt"):
+            continue
+        trozos.append(_texto_de(forma.find(P + "txBody")))
+    return " ".join(t for t in trozos if t)
+
+
+# ---------------------------------------------------------------- Excel (.xlsx)
+def _luz_excel(color: Optional[ElementTree.Element]) -> Optional[float]:
+    """Luz de un color de Excel (<color> o <fgColor>): rgb, color del tema o de la paleta antigua."""
+    if color is None:
+        return None
+    if color.get("rgb"):
+        return _hex_a_luz(color.get("rgb")[-6:])
+    try:
+        tinte = float(color.get("tint", "0"))
+    except ValueError:
+        tinte = 0.0
+    if color.get("theme") is not None:
+        tema = color.get("theme")
+        if tema in ("0", "2"):  # "Fondo 1" y "Fondo 2": blanco y gris muy claro en el tema normal
+            return 1.0
+        return 0.9 if tinte > 0.5 else 0.2  # texto y colores de énfasis; muy aclarados casi no se distinguen del blanco
+    if color.get("indexed") is not None:
+        return 1.0 if color.get("indexed") in ("1", "9", "65") else 0.2
+    return None
+
+
+class _EstilosExcel:
+    """Para cada estilo de celda: si la letra es blanca, el relleno oscuro, el tamaño y si el formato esconde el valor."""
+
+    def __init__(self, raiz: Optional[ElementTree.Element]):
+        self.estilos: list[tuple[bool, Optional[float], bool, bool]] = []
+        if raiz is None:
+            return
+        formatos = {nf.get("numFmtId"): nf.get("formatCode", "") for nf in raiz.iter(S + "numFmt")}
+        fuentes = []
+        for fuente in raiz.findall(f"{S}fonts/{S}font"):
+            luz = _luz_excel(fuente.find(S + "color"))
+            tam = fuente.find(S + "sz")
+            try:
+                puntos = float(tam.get("val")) if tam is not None else None
+            except (TypeError, ValueError):
+                puntos = None
+            fuentes.append((luz is not None and luz >= 0.94, puntos))
+        rellenos = []
+        for relleno in raiz.findall(f"{S}fills/{S}fill"):
+            patron = relleno.find(S + "patternFill")
+            if relleno.find(S + "gradientFill") is not None:
+                rellenos.append(True)
+            elif patron is not None and patron.get("patternType") not in (None, "none"):
+                luz = _luz_excel(patron.find(S + "fgColor"))
+                rellenos.append(luz is None or luz < 0.5)
+            else:
+                rellenos.append(False)
+        for xf in raiz.findall(f"{S}cellXfs/{S}xf"):
+            blanca, puntos = fuentes[int(xf.get("fontId", 0))] if int(xf.get("fontId", 0)) < len(fuentes) else (False, None)
+            oscuro = rellenos[int(xf.get("fillId", 0))] if int(xf.get("fillId", 0)) < len(rellenos) else False
+            formato = formatos.get(xf.get("numFmtId", ""), "").replace('"', "")
+            self.estilos.append((blanca, puntos, oscuro, formato.strip() == ";;;"))
+
+    def motivo(self, indice: Optional[str]) -> Optional[str]:
+        if not indice or not indice.isdigit() or int(indice) >= len(self.estilos):
+            return None
+        blanca, puntos, oscuro, sin_formato = self.estilos[int(indice)]
+        if sin_formato:
+            return "formato ;;; (la celda no enseña su valor)"
+        motivos = []
+        if blanca and not oscuro:
+            motivos.append("letra blanca sobre fondo blanco")
+        if puntos is not None and puntos <= 2:
+            motivos.append(f"letra diminuta ({puntos:g} pt)")
+        return " y ".join(motivos) or None
+
+
+def _columna(referencia: str) -> int:
+    """'AB12' -> 28 (número de columna)."""
+    numero = 0
+    for letra in referencia:
+        if not letra.isalpha():
+            break
+        numero = numero * 26 + ord(letra.upper()) - 64
+    return numero
+
+
+def _textos_compartidos(raiz: Optional[ElementTree.Element]) -> list[str]:
+    textos = []
+    for si in raiz.findall(S + "si") if raiz is not None else ():
+        trozos = [si.findtext(S + "t") or ""] + ["".join(t.text or "" for t in r.iter(S + "t")) for r in si.findall(S + "r")]
+        textos.append("".join(trozos))
+    return textos
+
+
+FORMULA_PELIGROSA = re.compile(r"(?i)(?:\b(?:cmd|powershell|pwsh|mshta|rundll32|regsvr32|certutil|wscript|cscript|msexcel)"
+                               r"\s*\||\bDDE(?:AUTO)?\b|\bWEBSERVICE\s*\(|\bCALL\s*\(|\bREGISTER\s*\()")
+
+
+def leer_xlsx(datos: bytes) -> Lectura:
+    try:
+        z = zipfile.ZipFile(io.BytesIO(datos))
+    except zipfile.BadZipFile as e:
+        raise ErrorLectura("No es un .xlsx válido (el zip está roto).") from e
+    with z:
+        libro = _xml(z, "xl/workbook.xml")
+        if libro is None:
+            raise ErrorLectura("No es un libro de Excel: falta xl/workbook.xml.")
+        rels = _destinos(z, "xl/workbook.xml")
+        compartidos = _textos_compartidos(_xml(z, "xl/sharedStrings.xml"))
+        estilos = _EstilosExcel(_xml(z, "xl/styles.xml"))
+        texto, visible, ocultos = [], [], []
+        peligros = _peligros_office(z)
+        formulas_peligrosas = []
+        celdas = 0
+        for hoja in libro.iter(S + "sheet"):
+            nombre, estado = hoja.get("name", "?"), hoja.get("state", "visible")
+            parte = rels.get(hoja.get(R + "id", ""))
+            raiz = _xml(z, parte) if parte else None
+            if raiz is None:
+                continue
+            columnas_ocultas = set()
+            for col in raiz.iter(S + "col"):
+                if col.get("hidden") in ("1", "true"):
+                    try:
+                        columnas_ocultas.update(range(int(col.get("min", 0)), min(int(col.get("max", 0)), 16384) + 1))
+                    except ValueError:
+                        pass
+            cabecera = f"[Hoja: {nombre}]\n"
+            lineas_texto, lineas_visibles = [cabecera], [cabecera]
+            for fila in raiz.iter(S + "row"):
+                fila_oculta = fila.get("hidden") in ("1", "true")
+                todo, vistos = [], []
+                for celda in fila.iter(S + "c"):
+                    celdas += 1
+                    if celdas > MAX_CELDAS_EXCEL:
+                        break
+                    formula = celda.findtext(S + "f") or ""
+                    if formula and FORMULA_PELIGROSA.search(formula):
+                        formulas_peligrosas.append(f"{nombre}!{celda.get('r', '?')}: ={formula[:80]}")
+                    valor = _valor_celda(celda, compartidos)
+                    if not valor:
+                        continue
+                    todo.append(valor)
+                    lugar = f"hoja «{nombre}», celda {celda.get('r', '?')}"
+                    if estado == "veryHidden":
+                        _juntar_oculto(ocultos, valor, "hoja muy oculta (solo se ve con macros)", f"hoja «{nombre}»")
+                    elif estado == "hidden":
+                        _juntar_oculto(ocultos, valor, "hoja oculta", f"hoja «{nombre}»", truco=False)
+                    elif (motivo := estilos.motivo(celda.get("s"))) is not None:
+                        _juntar_oculto(ocultos, valor, motivo, lugar)
+                    elif fila_oculta:
+                        _juntar_oculto(ocultos, valor, "fila oculta", f"hoja «{nombre}», fila {fila.get('r', '?')}",
+                                       truco=False)
+                    elif _columna(celda.get("r", "")) in columnas_ocultas:
+                        _juntar_oculto(ocultos, valor, "columna oculta", f"hoja «{nombre}»", truco=False)
+                    else:
+                        vistos.append(valor)
+                if todo:
+                    lineas_texto.append("\t".join(todo) + "\n")
+                if vistos:
+                    lineas_visibles.append("\t".join(vistos) + "\n")
+                if celdas > MAX_CELDAS_EXCEL:
+                    lineas_texto.append("[... hoja recortada: es demasiado grande]\n")
+                    break
+            texto.append("".join(lineas_texto))
+            if estado == "visible":
+                visible.append("".join(lineas_visibles))
+        for parte in sorted(n for n in z.namelist() if re.fullmatch(r"xl/(?:comments\d*|threadedComments/[^/]+)\.xml", n)):
+            comentario = _texto_de(_xml(z, parte))
+            if len(comentario) >= MIN_OCULTO:
+                texto.append(f"[Comentarios] {comentario}\n")
+                ocultos.append(TextoOculto(comentario, "comentarios de las celdas", "comentarios", truco=False))
+        for parte in (n for n in z.namelist() if n.startswith("xl/externalLinks/") and n.endswith(".xml")):
+            raiz = _xml(z, parte)
+            if raiz is not None and raiz.find(f".//{S}ddeLink") is not None:
+                peligros.append(Peligro("El libro tiene un enlace DDE: al abrirlo puede intentar ejecutar un programa "
+                                        "(técnica clásica de ataque con Excel).", 4))
+        if formulas_peligrosas:
+            peligros.append(Peligro(f"{len(formulas_peligrosas)} fórmula(s) que lanzan programas o llaman a Internet "
+                                    f"(inyección de fórmulas), por ejemplo {formulas_peligrosas[0]}", 4))
+        texto_final = "\n".join(texto) + _metadatos_office(z, ocultos)
+    ocultos = [o for o in ocultos if len(o.texto.strip()) >= MIN_OCULTO]
+    return Lectura(texto_final, _limpiar_huecos("\n".join(visible)), "excel", ocultos, peligros)
+
+
+def _valor_celda(celda: ElementTree.Element, compartidos: list[str]) -> str:
+    tipo = celda.get("t", "n")
+    if tipo == "inlineStr":
+        caja = celda.find(S + "is")
+        return "".join(t.text or "" for t in caja.iter(S + "t")) if caja is not None else ""
+    valor = celda.findtext(S + "v") or ""
+    if tipo == "s":
+        return compartidos[int(valor)] if valor.isdigit() and int(valor) < len(compartidos) else ""
+    if tipo == "b":
+        return "VERDADERO" if valor == "1" else "FALSO"
+    return valor
 
 
 # ---------------------------------------------------------------- PDF

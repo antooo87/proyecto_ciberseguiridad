@@ -1,0 +1,262 @@
+{
+  "aviso": "Generado por generar.py. NO es una medida a ciegas: los casos se escribieron a la vez que las reglas.",
+  "rrhh": {
+    "nominas_noviembre_2026.xlsx": {
+      "veredicto": "TRAMPA",
+      "datos": {
+        "DNI": 12,
+        "IBAN": 15,
+        "NIE": 3,
+        "NSS": 15
+      }
+    },
+    "contrato_indefinido_lasheras.docx": {
+      "veredicto": "DATOS PERSONALES",
+      "datos": {
+        "CIF": 1,
+        "DNI": 2,
+        "EMAIL": 2,
+        "FECHA_NACIMIENTO": 1,
+        "IBAN": 1,
+        "NSS": 1,
+        "TELEFONO": 1
+      }
+    },
+    "cv_candidato_ciberseguridad.docx": {
+      "veredicto": "TRAMPA",
+      "datos": {
+        "EMAIL": 1,
+        "TELEFONO": 1
+      }
+    },
+    "bienvenida_nuevos_empleados.pptx": {
+      "veredicto": "LIMPIO",
+      "datos": {}
+    },
+    "formacion_phishing_2026.pptx": {
+      "veredicto": "TRAMPA",
+      "datos": {}
+    },
+    "politica_teletrabajo_2026.pdf": {
+      "veredicto": "LIMPIO",
+      "datos": {}
+    },
+    "parte_baja_moreno.pdf": {
+      "veredicto": "DATOS PERSONALES",
+      "datos": {
+        "CIF": 1,
+        "DNI": 1,
+        "FECHA_NACIMIENTO": 1,
+        "NSS": 1,
+        "TELEFONO": 1
+      }
+    },
+    "correo_cambio_cuenta_nomina.eml": {
+      "veredicto": "DATOS PERSONALES",
+      "datos": {
+        "EMAIL": 2,
+        "IBAN": 1
+      }
+    },
+    "asistentes_curso_prl.csv": {
+      "veredicto": "DATOS PERSONALES",
+      "datos": {
+        "DNI": 12,
+        "EMAIL": 15,
+        "NIE": 3,
+        "TELEFONO": 15
+      }
+    },
+    "acta_comite_seguridad.txt": {
+      "veredicto": "LIMPIO",
+      "datos": {}
+    },
+    "portal_empleado_intranet.html": {
+      "veredicto": "TRAMPA",
+      "datos": {}
+    },
+    "credenciales_servidor_nominas.txt": {
+      "veredicto": "DATOS PERSONALES",
+      "datos": {
+        "CLAVE_API": 1,
+        "CONTRASENA": 2,
+        "IP": 3,
+        "JWT": 1
+      }
+    },
+    "encuesta_clima_laboral_2026.xlsx": {
+      "veredicto": "TRAMPA",
+      "datos": {}
+    },
+    "organigrama_2027.docx": {
+      "veredicto": "TRAMPA",
+      "datos": {}
+    }
+  },
+  "contrato": {
+    "archivo": "contrato_mantenimiento_cierzo_datanorte.docx",
+    "datos": {
+      "CIF": 3,
+      "DNI": 6,
+      "EMAIL": 14,
+      "IBAN": 2,
+      "IP": 8,
+      "MATRICULA": 5,
+      "NIE": 1,
+      "TELEFONO": 12
+    },
+    "distintos": {
+      "CIF": 2,
+      "DNI": 6,
+      "EMAIL": 14,
+      "IBAN": 2,
+      "IP": 8,
+      "MATRICULA": 5,
+      "NIE": 1,
+      "TELEFONO": 12
+    },
+    "valores": [
+      "+34 682 86 72 29",
+      "+34 698 47 72 80",
+      "+34 741 57 53 40",
+      "10.20.4.10",
+      "10.20.4.11",
+      "10.20.4.15",
+      "10.20.4.16",
+      "10.20.8.1",
+      "10.20.8.2",
+      "1190 LHT",
+      "192.168.50.20",
+      "203.0.113.48",
+      "2193 TTB",
+      "24112560G",
+      "24296813G",
+      "25229727S",
+      "35490087Y",
+      "4716 KGV",
+      "5596 CXX",
+      "58939279P",
+      "611 497 941",
+      "625 219 305",
+      "687939915",
+      "691533393",
+      "762 347 995",
+      "766 544 216",
+      "77361071L",
+      "778 760 104",
+      "798 718 957",
+      "9363 TWK",
+      "976 000 111",
+      "A50998871",
+      "B50771237",
+      "ES65 0081 0539 6574 2847 0850",
+      "ES69 2085 5301 6562 6044 9493",
+      "Y8993220G",
+      "anabelen.calvo@datanorte.example",
+      "daniel.torres@cierzo-rutas.example",
+      "dpd@cierzo-rutas.example",
+      "facturas@cierzo-rutas.example",
+      "fernando.sierra@datanorte.example",
+      "ines.pardo@datanorte.example",
+      "javier.royo@cierzo-rutas.example",
+      "lorena.bernad@datanorte.example",
+      "marcos.pueyo@datanorte.example",
+      "mihai.dumitru@datanorte.example",
+      "privacidad@datanorte.example",
+      "raquel.esteban@datanorte.example",
+      "rocio.lazaro@datanorte.example",
+      "tomas.aranda@datanorte.example"
+    ]
+  },
+  "bandeja": {
+    "01_correos_paquete_retenido.eml": {
+      "estafa": true
+    },
+    "02_santander_cuenta_bloqueada.eml": {
+      "estafa": true
+    },
+    "03_hacienda_devolucion.eml": {
+      "estafa": true
+    },
+    "04_director_general_transferencia.eml": {
+      "estafa": true
+    },
+    "05_microsoft365_contrasena.eml": {
+      "estafa": true
+    },
+    "06_oferta_trabajo_desde_casa.eml": {
+      "estafa": true
+    },
+    "07_sextorsion_bitcoin.eml": {
+      "estafa": true
+    },
+    "08_factura_pendiente_adjunta.eml": {
+      "estafa": true
+    },
+    "09_dgt_multa_pendiente.eml": {
+      "estafa": true
+    },
+    "13_boletin_con_aviso_escondido.eml": {
+      "estafa": true
+    },
+    "10_amazon_pedido_enviado.eml": {
+      "estafa": false
+    },
+    "11_companero_acta_reunion.eml": {
+      "estafa": false
+    },
+    "12_bbva_extracto_disponible.eml": {
+      "estafa": false
+    }
+  },
+  "respuestas": {
+    "01_instalar_herramienta.txt": "PELIGRO",
+    "02_acelerar_pc.txt": "PELIGRO",
+    "03_resumen_manipulado.txt": "PELIGRO",
+    "04_codigo_con_secretos.txt": "AVISO",
+    "05_texto_invisible.txt": "AVISO",
+    "06_respuesta_correcta.txt": "OK"
+  },
+  "preguntas": [
+    {
+      "pregunta": "hola buenas, me podrías ayudar con un tema del trabajo porfa",
+      "tipo": "pregunta"
+    },
+    {
+      "pregunta": "hazme un correo para mi jefe",
+      "tipo": "crear"
+    },
+    {
+      "pregunta": "no me funciona el excel desde ayer",
+      "tipo": "problema"
+    },
+    {
+      "pregunta": "que es eso del ransomware",
+      "tipo": "pregunta"
+    },
+    {
+      "pregunta": "necesito una presentación de ciberseguridad para mañana",
+      "tipo": "crear"
+    },
+    {
+      "pregunta": "me ha llegado un sms raro de correos",
+      "tipo": "problema"
+    },
+    {
+      "pregunta": "explícame la ley de protección de datos",
+      "tipo": "pregunta"
+    },
+    {
+      "pregunta": "a mi hijo le han hackeado el instagram y le piden dinero",
+      "tipo": "problema"
+    },
+    {
+      "pregunta": "hola! una pregunta rápida, ¿qué antivirus es mejor? ¿y gratis? ¿vale el de windows?",
+      "tipo": "pregunta"
+    },
+    {
+      "pregunta": "Tengo que mandar a la gestoría la nómina de Irene con su DNI 62166029L y su IBAN ES19 2085 8031 2703 5193 2653, cómo lo hago",
+      "tipo": "pregunta"
+    }
+  ]
+}

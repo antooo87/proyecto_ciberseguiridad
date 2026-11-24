@@ -3,6 +3,8 @@
 import os
 import sys
 
+from .tipos import contar
+
 # Colores para la terminal. Sin colores si la salida va a un archivo (así el registro no se llena de códigos
 # raros) o si existe la variable NO_COLOR (https://no-color.org).
 CON_COLOR = sys.stdout.isatty() and "NO_COLOR" not in os.environ
@@ -16,9 +18,8 @@ COLOR_GRAVEDAD = {"CRITICA": ROJO, "ALTA": ROJO, "PELIGRO": ROJO, "MEDIA": AMARI
 
 
 def resumen(cuenta: dict[str, int]) -> str:
-    if not cuenta:
-        return "ningún dato sensible"
-    return ", ".join(f"{n} {tipo}" for tipo, n in cuenta.items())
+    """{'DNI': 1, 'TELEFONO': 2} -> '1 DNI y 2 teléfonos' (con nombres que entiende cualquiera)."""
+    return contar(cuenta)
 
 
 def imprimir_informe(informe):

@@ -1,0 +1,29 @@
+From: Microsoft 365 <no-reply@microsoft-365-soporte.example>
+To: =?utf-8?q?Luc=C3=ADa_Mart=C3=ADn?= <lucia.martin@correo.example>
+Subject: Su =?utf-8?q?contrase=C3=B1a?= caduca hoy
+Date: Tue, 24 Nov 2026 10:05:00 +0100
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="==guardian-ia-0=="
+
+--==guardian-ia-0==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+Su contrase=C3=B1a de Microsoft 365 caduca hoy. Para mantener la misma contra=
+se=C3=B1a y no perder el acceso a su correo, inicie sesi=C3=B3n aqu=C3=AD: ht=
+tps://microsoft-365-soporte.example/login
+
+Equipo de cuentas de Microsoft
+
+--==guardian-ia-0==
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<p>Su contrase=C3=B1a de <b>Microsoft 365</b> caduca hoy.</p><p>Para mantener=
+ la misma contrase=C3=B1a y no perder el acceso a su correo, inicie sesi=C3=
+=B3n:</p><p><a href=3D"https://microsoft-365-soporte.example/login" style=3D"=
+background:#0078d4;color:#fff;padding:8px 16px">Mantener mi contrase=C3=B1a</=
+a></p><p>Equipo de cuentas de Microsoft</p>
+
+--==guardian-ia-0==--

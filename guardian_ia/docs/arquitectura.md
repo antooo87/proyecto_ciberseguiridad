@@ -68,6 +68,63 @@ Muchos programas hablan con la IA en el formato de OpenAI. Con `python -m guardi
 - **Seguir tras un bloqueo**: si se bloquean todas las acciones de una respuesta, el proxy se lo cuenta a la IA (como si fuera el resultado de la herramienta: "esta acción NO se ha hecho porque...") y le pide que conteste sin ellas, sin volver a ofrecerle esas herramientas. Así el ataque no funciona y el usuario recibe lo que pidió. Solo hay una segunda oportunidad, y pasa por los mismos controles.
 - **Control del flujo de datos**: una acción no puede mandar nada a una dirección de correo que la IA ha sacado de lo que ha leído (una web, un archivo), y tus datos solo pueden ir a destinos (correos o webs) que aparecen en tus mensajes. Esta capa no depende de detectar el ataque: funciona aunque la trampa no use ninguna frase conocida. Se añadió después de ver en el experimento del agente que, con solo reglas, una trampa nueva pasaba la aduana (ver `evaluacion.md`).
 
+## Extensión del navegador: el Guardián dentro de ChatGPT, Claude, Gemini...
+
+```mermaid
+flowchart LR
+    subgraph WEB["Web del chatbot (chatgpt.com, claude.ai...)"]
+        CS["Script de la extensión<br/>(pegar, Enter, respuestas)"]
+    end
+    subgraph EXT["Extensión (no la ve la web)"]
+        BG["Trabajador de fondo<br/>(única pieza con la clave)"]
+        PANEL["Panel lateral<br/>(respuesta con tus datos reales)"]
+    end
+    subgraph PC["Guardián en 127.0.0.1:8788 (guardian servicio)"]
+        S["aduana → escudo (bóveda)<br/>verificador → restaurar → registro"]
+    end
+    CS -->|"texto pegado o escrito"| BG
+    BG -->|"Bearer clave"| S
+    S -->|"texto con [DNI_1]..."| BG
+    BG -->|"solo el texto tapado"| CS
+    CS -->|"respuesta de la IA"| BG
+    BG -->|"respuesta revisada,<br/>con tus datos"| PANEL
+```
+
+La extensión no tapa nada por sí misma: se lo pide al **servicio local** (`python -m guardian servicio`), que usa el mismo escudo, aduana y verificador que el resto del programa y guarda la bóveda en su memoria. Así hay una sola fuente de verdad y la IA local se puede usar también desde el navegador (`--ia`).
+
+- **Al pegar** un texto, se pega ya tapado; si es largo, pasa además por la aduana y se pega solo lo que se ve. Lo pegado se recuerda (ya tapado) para buscar en la respuesta el **eco de la trampa**.
+- **Antes de enviar** (Enter o el botón), si el texto parece llevar datos se tapa y hay que volver a pulsar, para que puedas revisarlo.
+- **La respuesta** de la IA se manda al servicio, que la revisa y le vuelve a poner tus datos. Solo la ve el panel lateral de la extensión: la web del chatbot no puede leer las páginas de una extensión.
+- **Fallo cerrado**: con el servicio apagado, lo que parece llevar datos no se pega ni se envía (la extensión tiene una copia de las reglas para darse cuenta).
+- La web nunca ve la clave del servicio: solo la guarda el trabajador de fondo, y las páginas solo reciben texto ya tapado. El servicio solo atiende a extensiones (cabecera Origin), en 127.0.0.1 y con clave.
+
+## Panel de actividad
+
+El registro (`registro/guardian_AAAA-MM-DD.jsonl`) apunta cada suceso del chat, la extensión y el proxy con **cuántos datos de cada tipo** se taparon, el riesgo de los documentos, el nivel y el tipo de los avisos de la respuesta y las acciones bloqueadas. Nunca guarda el dato ni el texto. `guardian/actividad.py` lo resume para tres sitios: `python -m guardian informe`, la pestaña "📈 Actividad" de la web y «Esta semana» en el panel de la extensión (`GET /v1/guardian/actividad`, solo para las páginas de la propia extensión).
+
+## Para quien no sabe de informática: preguntar mejor y no picar en estafas
+
+Desde la 0.5.0 el Guardián no solo protege lo que le das a la IA: también ayuda a usarla bien y a no caer en los engaños que llegan por SMS, WhatsApp o correo. Las tres piezas funcionan **sin IA** (con reglas) y en todas partes: terminal, web, servicio y extensión.
+
+```mermaid
+flowchart LR
+    Q(["Tu pregunta"]) --> ES["Escudo<br/>tapa tus datos primero"]
+    ES --> AN["Mejorador · analizar<br/>¿pregunta, encargo o problema?<br/>¿qué le falta? nota 0-100"]
+    AN --> VR["Dos versiones por reglas<br/>Directa y Completa<br/>con huecos «escribe aquí...»"]
+    AN -.->|"--ia"| IAL{{"IA local<br/>(nunca remota)"}}
+    IAL -.->|"si cambia un marcador o se alarga:<br/>se queda la de reglas"| VR
+    AN -->|"«me ha llegado un SMS raro»<br/>«me han hackeado»"| EST
+    M(["SMS, WhatsApp<br/>o texto pegado"]) --> EST["¿Es una estafa?<br/>pistas con reglas +<br/>enlaces al verificador"]
+    EML(["Correo .eml<br/>o bandeja entera"]) --> CO["correo.py<br/>remitente real, Reply-To,<br/>enlaces, texto escondido,<br/>adjuntos disfrazados"]
+    CO --> EST
+    EST --> R["Nivel, tipo de estafa,<br/>cada pista explicada,<br/>qué hacer y primeros auxilios"]
+```
+
+- **Mejorar mi pregunta** (`guardian/mejorador.py`). Primero tapa tus datos con el escudo (con la misma bóveda del chat o de la extensión, así `[DNI_1]` es el mismo en la pregunta y en la respuesta). Después mira qué tipo de petición es y qué le falta: una tarea clara, el tema, para qué la quieres y el formato. Con eso le pone nota y escribe dos versiones. Nunca se inventa lo que falta: deja un hueco «escribe aquí...» que la extensión deja seleccionado para que escribas encima. Con `--ia`, las versiones las escribe la IA local con salida estructurada y se comprueban: si quita o cambia un marcador, mete un dato que no estaba o se alarga demasiado, se descartan.
+- **¿Es una estafa?** (`guardian/estafas.py`). Reglas de pistas (prisa, amenaza, pedir datos o dinero, «no se lo digas a nadie», pasarte a WhatsApp...) con un peso cada una; con la suma sale el nivel y, con las pistas que han salido, el tipo de estafa. Los enlaces pasan por el verificador (si imitan a una marca y no son su web oficial). Si cuentas que ya has picado, salen primero los primeros auxilios.
+- **Correos enteros** (`guardian/correo.py`). Un `.eml` se descodifica con la librería estándar de Python (`email` y `html.parser`) y se sacan las pistas que no están en el texto: el dominio real del remitente, adónde irían tus respuestas, adónde llevan de verdad los enlaces del HTML, el texto escondido con estilos (tamaño 0, blanco sin fondo, `display:none`) y los adjuntos que son programas disfrazados. La aduana y el escáner usan el mismo lector, así que un correo con órdenes escondidas para la IA también se para antes de dárselo a un chatbot.
+- **¿Lo detectas?** (`guardian/escuela.py`): el juego usa el mismo análisis para explicar cada mensaje.
+
 ## Qué ve cada pieza con IA
 
 | Pieza | Modelo | Dónde | Qué recibe | Qué devuelve | Si falla |
@@ -75,6 +132,7 @@ Muchos programas hablan con la IA en el formato de OpenAI. Con `python -m guardi
 | Detector del escudo | Qwen3.5 (2B o 9B) | Siempre local (se niega a usar una IA remota) | Tu texto **sin tapar**, en trozos de 3000 caracteres | JSON con tres listas: personas, direcciones, contraseñas | Aviso y solo reglas |
 | Juez de la aduana | Qwen3.5 | Siempre local | El documento **sin tapar** (máx. 6000 caracteres) entre marcas con un código aleatorio | JSON `{es_ataque, motivo}` | Aviso y solo reglas |
 | Juez de respaldo | Qwen3.5 | Siempre local | La respuesta y el documento, ya tapados | JSON con números de frase respaldadas, contradichas y sin respaldo | Aviso, sin respaldo |
+| Mejorador (opcional, `--ia`) | Qwen3.5 | Siempre local (se niega a usar una IA remota) | Tu pregunta **ya tapada** y el análisis de reglas | JSON con las dos versiones | Se queda la versión de reglas |
 | IA que responde | La que elijas | Local o nube | Solo texto con marcadores, instrucciones del sistema con canario y documento desinfectado | Texto | Error visible |
 
 Las tres primeras piezas usan **salida estructurada** (el modelo está obligado a contestar con un esquema JSON) y se filtra lo que devuelven: por ejemplo, el detector solo acepta datos que aparecen literalmente en el texto, así una alucinación no tapa nada que no exista.
@@ -83,20 +141,37 @@ Las tres primeras piezas usan **salida estructurada** (el modelo está obligado 
 
 ```
 guardian/
-  __main__.py      programa de terminal: estado, chat, proteger, aduana, verificar, revisar, proxy, evaluar
+  __main__.py      programa de terminal: doctor, estado, chat, proteger, mejorar, estafa, aprende, aduana,
+                   verificar, revisar, escanear, anonimizar, proxy, servicio, web, app, informe, evaluar, demo
   config.py        ajustes por variables de entorno
   ia.py            clientes de IA (Ollama, Ollama Cloud, API OpenAI) y regla "lo sensible, solo local"
   nucleo.py        el flujo de la figura de arriba
   proxy.py         modo proxy compatible con OpenAI y control de acciones
+  servicio.py      servicio local para la extensión del navegador (127.0.0.1:8788, con clave)
   registro.py      auditoría en JSONL sin datos
+  actividad.py     resumen del registro (informe, pestaña Actividad, panel de la extensión)
+  escaner.py       revisar carpetas y anonimizar documentos
+  mejorador.py     «Mejorar mi pregunta»: análisis, nota, dos versiones y huecos (reglas o IA local comprobada)
+  estafas.py       «¿Es una estafa?»: pistas, tipos, qué hacer, primeros auxilios y bandejas de correo
+  correo.py        lector de correos .eml (remitente real, enlaces, texto escondido, adjuntos)
+  escuela.py       juego «¿Lo detectas?»
+  tipos.py         nombres de los tipos de dato que entiende cualquiera
+  terminal.py      colores (y sin colores si la salida va a un archivo o existe NO_COLOR)
+  doctor.py        comprueba la instalación y dice cómo arreglarla
   evaluacion.py    medición con los conjuntos propios
   escudo/          validadores.py, detectores.py (reglas), detector_ia.py, escudo.py (tapar y restaurar)
-  aduana/          aduana.py (reglas), lectores.py (Word y PDF), juez_ia.py, muestras.py (documentos de prueba)
-  verificador/     salida.py (comandos, exfiltración), enlaces.py, respaldo.py, verificador.py
+  aduana/          aduana.py (reglas), lectores.py (Word, PowerPoint, Excel y PDF), juez_ia.py,
+                   muestras.py y muestras_office.py (documentos de prueba)
+  verificador/     salida.py (comandos, exfiltración), enlaces.py, eco.py (eco de la trampa), respaldo.py,
+                   verificador.py
   revisor/         extensiones.py, conectores.py, modelos.py, red.py, revisor.py, demo.py, lista_negra.json
-app_web.py         web con Streamlit (solo escucha en tu PC)
-evaluacion/        conjuntos, generadores, experimento de prompts, conjuntos públicos y resultados
-ejemplos/          documentos con trampa y limpios, y el agente de demostración
+extension/         extensión del navegador: manifest.json, background.js (clave y servicio), contenido.js (webs),
+                   comun.js (reglas para el fallo cerrado), panel, opciones, página de prueba y pruebas
+app_web.py         web con Streamlit (guardian web; solo escucha en tu PC)
+instalar.ps1       instalador para Windows (entorno, librerías, lanzador guardian.cmd, médico)
+evaluacion/        conjuntos, generadores, experimentos, conjuntos públicos, resultados y repetir_medidas.py
+ejemplos/          documentos con trampa y limpios, el agente de demostración y casos_reales/ (la empresa
+                   inventada, creada por generar.py con esperado.json)
 tests/             pruebas automáticas con una IA falsa (no necesitan Ollama)
 docs/              esta documentación
 ```
@@ -109,9 +184,11 @@ docs/              esta documentación
 | IA local | Ollama + Qwen3.5 (9B en el PC, 2B para pruebas) | Gratis, sin enviar datos fuera, buen español y salida estructurada |
 | Conexión con la IA | librería `ollama` y `httpx` (API compatible con OpenAI) | Cambiar de proveedor sin tocar el resto |
 | PDF | `pdfminer.six` | Da el color, el tamaño y la posición de cada letra: hace falta para ver el texto escondido |
-| Word | Solo la biblioteca estándar (`zipfile`, `xml`) | Un .docx es un zip con XML; menos dependencias, menos riesgos |
+| Correos `.eml` | La biblioteca estándar (`email`, `html.parser`) | Descodifica todo lo que usan los programas de correo sin librerías de terceros y sin abrir nada de Internet |
+| Word, PowerPoint y Excel | La biblioteca estándar (`zipfile`) y `defusedxml` | Son zips con XML; `defusedxml` lee el XML sin DTD ni entidades (sin bombas XML) |
 | Web | Streamlit | Interfaz en el navegador con poco código |
-| Calidad | pytest (146 pruebas), ruff, GitHub Actions en Windows y Linux | Cada cambio se comprueba solo |
+| Extensión del navegador | JavaScript sin librerías, Manifest V3 (Chrome, Edge, Brave) | Nada que descargar de terceros dentro de la extensión; los permisos justos (sin acceso a todas las webs) |
+| Calidad | pytest (320 pruebas), ruff, pruebas de la extensión en un Chromium de verdad (Playwright) y GitHub Actions en Windows y Linux, con el instalador incluido | Cada cambio se comprueba solo |
 
 ## Hardware
 

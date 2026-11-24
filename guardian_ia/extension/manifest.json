@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "Guardián IA",
+  "version": "0.5.0",
+  "description": "Tapa tus datos personales antes de que lleguen a ChatGPT, Claude o Gemini, con el Guardián IA de tu PC.",
+  "icons": {
+    "16": "iconos/icono16.png",
+    "32": "iconos/icono32.png",
+    "48": "iconos/icono48.png",
+    "128": "iconos/icono128.png"
+  },
+  "permissions": ["storage", "sidePanel", "contextMenus", "activeTab"],
+  "host_permissions": ["http://127.0.0.1/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Guardián IA"
+  },
+  "side_panel": {
+    "default_path": "panel.html"
+  },
+  "options_page": "opciones.html",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://copilot.microsoft.com/*",
+        "https://chat.deepseek.com/*",
+        "https://chat.mistral.ai/*",
+        "https://www.perplexity.ai/*",
+        "https://chat.qwen.ai/*",
+        "https://grok.com/*"
+      ],
+      "js": ["comun.js", "contenido.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'"
+  }
+}
