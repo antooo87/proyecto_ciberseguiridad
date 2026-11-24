@@ -1,0 +1,4 @@
+# Los casos se comparan byte a byte con lo que crea generar.py: que Git no cambie los saltos de línea en Windows
+* -text
+generar.py text eol=lf
+LEEME.md text

@@ -32,8 +32,8 @@ def casos(tmp_path_factory):
 def test_los_archivos_del_repositorio_son_los_que_crea_el_generador(casos):
     destino, _ = casos
     creados = sorted(p.relative_to(destino) for p in destino.rglob("*") if p.is_file())
-    guardados = sorted(p.relative_to(CASOS) for p in CASOS.rglob("*") if p.is_file() and p.name != "generar.py"
-                       and p.name != "LEEME.md" and "__pycache__" not in p.parts)
+    guardados = sorted(p.relative_to(CASOS) for p in CASOS.rglob("*") if p.is_file()
+                       and p.name not in ("generar.py", "LEEME.md", ".gitattributes") and "__pycache__" not in p.parts)
     assert creados == guardados
     distintos = [str(r) for r in creados if (destino / r).read_bytes() != (CASOS / r).read_bytes()]
     assert distintos == [], f"Vuelve a ejecutar ejemplos/casos_reales/generar.py: han cambiado {distintos}"
