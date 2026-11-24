@@ -160,3 +160,27 @@ def test_nunca_usa_una_ia_remota():
     remota.es_local = False
     with pytest.raises(ValueError, match="solo usa una IA local"):
         Mejorador(cliente=remota)
+
+
+@pytest.mark.parametrize("texto, empieza", [
+    ("necesito una presentación de ciberseguridad para mañana", "Prepárame una presentación de ciberseguridad"),
+    ("Tengo que mandar a la gestoría las nóminas del mes, cómo lo hago", "Tengo que mandar a la gestoría las "
+                                                                         "nóminas del mes. ¿Cómo lo hago?"),
+    ("hola! una pregunta rápida, ¿qué antivirus es mejor?", "¿Qué antivirus es mejor?"),
+    ("hola buenas, me podrías ayudar con un tema del trabajo porfa", "Ayúdame con «escribe aquí de qué se trata»."),
+])
+def test_preguntas_como_las_escribe_la_gente(texto, empieza):
+    assert Mejorador().mejorar(texto).versiones[0].texto.startswith(empieza)
+
+
+def test_pedir_un_texto_sin_decir_de_que_trata():
+    mejora = Mejorador().mejorar("hazme un correo para mi jefe")
+    assert mejora.nota <= 70 and any("Di de qué trata" in c for c in mejora.consejos)
+    assert "«escribe aquí de qué trata" in mejora.versiones[0].texto
+    assert Mejorador().mejorar("hazme un correo para mi jefe para pedirle el viernes libre").nota >= 80
+
+
+def test_un_hijo_hackeado_es_un_problema_y_un_sms_raro_lleva_a_es_una_estafa():
+    assert analizar("a mi hijo le han hackeado el instagram y le piden dinero").tipo == "problema"
+    mejora = Mejorador().mejorar("me ha llegado un sms raro de correos")
+    assert any("¿Es una estafa?" in c for c in mejora.consejos)

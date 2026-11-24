@@ -14,7 +14,10 @@ def test_escanear_ejemplos_da_un_veredicto_por_documento():
     assert veredictos["mensaje_con_datos.txt"] == DATOS
     assert veredictos["informe_limpio.docx"] == LIMPIO
     assert informe.archivos[0].veredicto == TRAMPA  # lo peor sale primero
-    assert informe.datos_totales()["DNI"] == 1
+    # en la carpeta de arriba solo hay un DNI; el resto está en casos_reales/ (las subcarpetas también se revisan)
+    sueltos = [a for a in informe.archivos if len(Path(a.ruta).parts) == 1]
+    assert sum(a.datos.get("DNI", 0) for a in sueltos) == 1
+    assert any(a.ruta.startswith("casos_reales") for a in informe.archivos)
 
 
 def test_escanear_no_entra_en_carpetas_de_programas_y_avisa_de_lo_ilegible(tmp_path):

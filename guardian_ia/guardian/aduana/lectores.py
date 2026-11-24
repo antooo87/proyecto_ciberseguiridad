@@ -1,4 +1,4 @@
-"""Lectores de documentos para la aduana: texto, Word (.docx), PowerPoint (.pptx), Excel (.xlsx) y PDF.
+"""Lectores de documentos para la aduana: texto, correos (.eml), Word (.docx), PowerPoint (.pptx), Excel (.xlsx) y PDF.
 
 Un Word o un PDF pueden llevar texto que una persona NO ve pero la IA sí lee:
 letra blanca sobre fondo blanco, tamaño diminuto, texto marcado como oculto o
@@ -74,7 +74,7 @@ class Peligro:
 class Lectura:
     texto: str
     visible: str
-    formato: str  # "texto", "word", "powerpoint", "excel" o "pdf"
+    formato: str  # "texto", "correo", "word", "powerpoint", "excel" o "pdf"
     ocultos: list[TextoOculto] = field(default_factory=list)
     peligros: list[Peligro] = field(default_factory=list)
 
@@ -103,11 +103,30 @@ def leer(origen: Union[str, Path, bytes], nombre: Optional[str] = None) -> Lectu
         return leer_xlsx(datos)
     if datos[:2] == b"PK" and extension in EXTENSIONES_WORD + ("",):
         return _leer_office_sin_nombre(datos) if not extension else leer_docx(datos)
+    if extension == ".eml":
+        return leer_eml(datos)
     if extension in (".doc", ".xls", ".ppt", ".odt", ".ods", ".odp", ".rtf"):
         raise ErrorLectura(f"Formato {extension} no soportado todavía: guárdalo como .docx, .pptx, .xlsx, .pdf o "
                            "texto.")
     texto = datos.decode("utf-8", errors="replace")
     return Lectura(texto, texto, "texto")
+
+
+def leer_eml(datos: bytes) -> Lectura:
+    """Un correo guardado: se descodifica (quoted-printable, base64, HTML) para leer lo mismo que verías tú.
+
+    Lo escondido con estilos (letra de tamaño 0, blanca, display:none) y los comentarios HTML son trucos para la IA
+    que resume el correo; un adjunto que es un programa disfrazado («factura.pdf.iso») es un peligro del archivo.
+    """
+    from ..correo import adjunto_peligroso, leer_correo  # aquí, para no cargar el módulo de correo si no hace falta
+
+    correo = leer_correo(datos)
+    ocultos = [TextoOculto(o, "comentario HTML" if o.startswith("<!--") else
+                           "texto escondido con estilos (tamaño 0, blanco o display:none)", "cuerpo del correo")
+               for o in correo.ocultos if len(o.strip()) >= MIN_OCULTO]
+    peligros = [Peligro(f"El correo trae un adjunto peligroso: {motivo}", 4)
+                for motivo in filter(None, map(adjunto_peligroso, correo.adjuntos))]
+    return Lectura(correo.como_texto(), correo.como_texto(con_ocultos=False), "correo", ocultos, peligros)
 
 
 def _limpiar_huecos(texto: str) -> str:

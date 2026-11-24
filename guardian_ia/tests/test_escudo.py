@@ -98,3 +98,35 @@ def test_tipos_nuevos_no_tapan_lo_que_solo_se_parece():
     ]
     for t in textos:
         assert Escudo().proteger(t).protegido == t, t
+
+
+def test_columnas_de_una_tabla_con_la_cabecera_lejos_del_dato():
+    # En un Excel o un CSV la palabra «Seguridad Social» está en la cabecera, no al lado del número
+    from guardian.escudo.detectores import detectar_en_columnas
+    tabla = ("Empleado\tNº afiliación S.S.\tFecha de nacimiento\tContraseña\n"
+             "Ana Ruiz\t50/12345678/76\t03/04/1990\tVerano2024!\n"
+             "Luis Gil\t28/87654321/17\t21/12/1985\tPerro_77\n"
+             "\n"
+             "Total\t2\n")
+    hallazgos = detectar_en_columnas(tabla)
+    assert [(h.tipo, h.valor) for h in hallazgos] == [
+        ("NSS", "50/12345678/76"), ("FECHA_NACIMIENTO", "03/04/1990"), ("CONTRASENA", "Verano2024!"),
+        ("NSS", "28/87654321/17"), ("FECHA_NACIMIENTO", "21/12/1985"), ("CONTRASENA", "Perro_77")]
+    assert all(tabla[h.inicio:h.fin] == h.valor for h in hallazgos)
+    protegido = Escudo().proteger(tabla).protegido
+    assert "50/12345678/76" not in protegido and "Verano2024!" not in protegido
+
+
+def test_columnas_no_se_inventan_datos():
+    from guardian.escudo.detectores import detectar_en_columnas
+    # el número no cuadra con su control (no es un NSS) y «palabra clave» no es una contraseña
+    assert detectar_en_columnas("Nº S.S.;Importe\n50/12345678/99;30\n") == []
+    assert detectar_en_columnas("Producto;Palabra clave\nZapatillas;running\n") == []
+
+
+def test_contrasena_dentro_de_una_cadena_de_conexion():
+    texto = "Me falla esto: postgres://rrhh:Pg_rrhh_77x@10.20.4.16:5432/nominas ¿por qué?"
+    tipos = {(h.tipo, h.valor) for h in Escudo().detectar(texto)[0]}
+    assert ("CONTRASENA", "Pg_rrhh_77x") in tipos and ("IP", "10.20.4.16") in tipos
+    # la palabra «password» de los ejemplos de la documentación no es una contraseña
+    assert "CONTRASENA" not in {h.tipo for h in Escudo().detectar("https://usuario:password@example.com")[0]}

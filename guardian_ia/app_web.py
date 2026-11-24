@@ -19,6 +19,8 @@ from guardian.aduana import Aduana, ErrorLectura, Lectura, leer
 from guardian.escudo import Escudo
 from guardian.ia import ClienteIA, ErrorIA, crear_cliente
 from guardian.nucleo import Guardian
+from guardian.tipos import contar
+from guardian.tipos import nombre as nombre_tipo
 from guardian.verificador import JuezRespaldo, Verificador
 
 st.set_page_config(page_title="Guardián IA", page_icon="🛡️", layout="wide")
@@ -243,7 +245,7 @@ def pagina_carpeta():
             for col, (veredicto, n) in zip(columnas, cuenta.items(), strict=True):
                 col.metric(veredicto.capitalize(), n)
             st.dataframe([{"Documento": a.ruta, "Veredicto": f"{VEREDICTO_ICONO.get(a.veredicto, '')} {a.veredicto}",
-                           "Datos personales": ", ".join(f"{n} {t}" for t, n in a.datos.items()) or "–",
+                           "Datos personales": contar(a.datos) if a.datos else "–",
                            "Aduana": a.error or f"{a.riesgo} ({a.puntuacion})", "Texto escondido": a.ocultos}
                           for a in informe_c.archivos], hide_index=True, width="stretch")
             if cuenta[TRAMPA]:
@@ -262,7 +264,7 @@ def pagina_carpeta():
         except ErrorLectura as e:
             st.error(f"No puedo leer {para_anonimizar.name}: {e}")
         else:
-            tapados = ", ".join(f"{n} {t}" for t, n in resultado_anon.resumen().items()) or "ningún dato"
+            tapados = contar(resultado_anon.resumen())
             st.caption(f"Tapados: {tapados}" + (f" · quitados {quitados} trozo(s) de texto escondido" if quitados else ""))
             if not con_ia:
                 st.info("Sin la detección con IA (barra lateral) no se tapan los nombres, las direcciones ni las "
@@ -379,7 +381,7 @@ def pagina_actividad():
         with izq:
             st.markdown("**Datos tapados, por tipo**")
             if actividad.datos:
-                filas = [{"Tipo": t, "Datos": n} for t, n in actividad.datos.most_common()]
+                filas = [{"Tipo": nombre_tipo(t, n), "Datos": n} for t, n in actividad.datos.most_common()]
                 st.altair_chart(grafico_barras(filas, "Tipo", "Datos", horizontal=True), width="stretch")
                 with st.expander("Ver como tabla"):
                     st.dataframe(filas, hide_index=True, width="stretch")
@@ -609,19 +611,8 @@ def texto_sin_enlaces(texto):
             "font-size:15px;line-height:1.5'>" + html.escape(texto) + "</div>")
 
 
-def pagina_estafa():
-    from guardian.escuela import MENSAJES
-    from guardian.estafas import analizar as analizar_estafa
-    st.subheader("🚨 ¿Es una estafa?")
-    st.caption("Pega un SMS, un correo o un WhatsApp que te dé mala espina. Te digo si tiene las pistas de una estafa, "
-               "te las explico para que aprendas a verlas y te digo qué hacer, también si ya has picado. Todo en tu "
-               "PC y sin IA. En el navegador: selecciona el texto, clic derecho → «Guardián: ¿es una estafa?».")
-    ejemplos = {f"{n}. {m.canal} de {m.remitente}": m.texto for n, m in enumerate(MENSAJES, 1)}
-    ejemplo = st.selectbox("Ejemplos (inventados, copiados de los engaños que más circulan)", list(ejemplos))
-    texto = st.text_area("El mensaje", ejemplos[ejemplo], height=150, key=f"estafa_{ejemplo}")
-    if not st.button("Analizar", type="primary") or not texto.strip():
-        return
-    informe = analizar_estafa(texto)
+def _informe_estafa(informe) -> None:
+    """El veredicto, las pistas y qué hacer (también si ya has picado)."""
     aviso = {"ALTO": st.error, "MEDIO": st.warning, "BAJO": st.success}[informe.nivel]
     aviso(f"**{informe.veredicto}**" + (f" · parece: **{informe.tipo}**" if informe.tipo else "")
           + f" (puntuación {informe.puntuacion})")
@@ -638,6 +629,56 @@ def pagina_estafa():
     with der:
         st.markdown("**Qué hacer**")
         st.markdown("\n".join(f"- {p}" for p in informe.que_hacer))
+
+
+BANDEJA_EJEMPLO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ejemplos", "casos_reales",
+                               "3_bandeja_de_entrada")
+
+
+def pagina_estafa():
+    from guardian.escuela import MENSAJES
+    from guardian.estafas import analizar as analizar_estafa
+    from guardian.estafas import ordenar, revisar_bandeja, revisar_mensaje
+    st.subheader("🚨 ¿Es una estafa?")
+    st.caption("Pega un SMS, un correo o un WhatsApp que te dé mala espina. Te digo si tiene las pistas de una estafa, "
+               "te las explico para que aprendas a verlas y te digo qué hacer, también si ya has picado. Todo en tu "
+               "PC y sin IA. En el navegador: selecciona el texto, clic derecho → «Guardián: ¿es una estafa?».")
+    un_mensaje, bandeja = st.tabs(["Un mensaje", "Varios correos (.eml)"])
+    with un_mensaje:
+        ejemplos = {f"{n}. {m.canal} de {m.remitente}": m.texto for n, m in enumerate(MENSAJES, 1)}
+        ejemplo = st.selectbox("Ejemplos (inventados, copiados de los engaños que más circulan)", list(ejemplos))
+        texto = st.text_area("El mensaje", ejemplos[ejemplo], height=150, key=f"estafa_{ejemplo}")
+        if st.button("Analizar", type="primary") and texto.strip():
+            _informe_estafa(analizar_estafa(texto))
+    with bandeja:
+        st.caption("Guarda los correos que te den mala espina como .eml (Outlook: Archivo → Guardar como; Gmail: ⋮ → "
+                   "Descargar mensaje) y súbelos aquí. Así miro también lo que no se ve en el texto: quién lo manda "
+                   "de verdad, adónde llevan los enlaces, el texto escondido para la IA y los adjuntos disfrazados.")
+        subidos = st.file_uploader("Correos (.eml) o mensajes (.txt)", type=["eml", "txt"], accept_multiple_files=True)
+        if os.path.isdir(BANDEJA_EJEMPLO) and st.button("Probar con una bandeja de ejemplo (13 correos inventados)"):
+            st.session_state["bandeja_ejemplo"] = True
+        if subidos:
+            revisados = ordenar([revisar_mensaje(f.getvalue(), f.name) for f in subidos])
+        elif st.session_state.get("bandeja_ejemplo"):
+            revisados = revisar_bandeja(BANDEJA_EJEMPLO)
+        else:
+            return
+        leidos = [r for r in revisados if r.informe]
+        altos = sum(r.informe.nivel == "ALTO" for r in leidos)
+        dudosos = sum(r.informe.nivel == "MEDIO" for r in leidos)
+        columnas = st.columns(3)
+        columnas[0].metric("🔴 Casi seguro estafas", altos)
+        columnas[1].metric("🟠 Dudosos", dudosos)
+        columnas[2].metric("🟢 Sin señales", len(leidos) - altos - dudosos)
+        icono = {"ALTO": "🔴", "MEDIO": "🟠", "BAJO": "🟢"}
+        st.dataframe([{"": icono[r.informe.nivel] if r.informe else "⚪", "Asunto": r.asunto or r.archivo,
+                       "De": r.de, "Parece": (r.informe.tipo or "–") if r.informe else r.error}
+                      for r in revisados], hide_index=True, width="stretch")
+        for r in leidos:
+            if r.informe.nivel != "BAJO":
+                with st.expander(f"{icono[r.informe.nivel]} {r.asunto or r.archivo}"):
+                    st.caption(f"De: {r.de}" if r.de else r.archivo)
+                    _informe_estafa(r.informe)
 
 
 # ---------------- ¿Lo detectas? ----------------

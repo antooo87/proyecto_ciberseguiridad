@@ -20,6 +20,7 @@ from typing import Optional, Union
 from .aduana import Aduana, ErrorLectura, leer
 from .aduana.lectores import EXTENSIONES_OFFICE, EXTENSIONES_TEXTO
 from .escudo import Escudo, ResultadoEscudo
+from .tipos import contar
 
 EXTENSIONES = EXTENSIONES_TEXTO | set(EXTENSIONES_OFFICE) | {".pdf"}
 CARPETAS_IGNORADAS = {".git", ".venv", "venv", "node_modules", "__pycache__", ".mypy_cache", ".pytest_cache"}
@@ -81,16 +82,16 @@ class InformeEscaneo:
         cuenta = self.cuenta()
         lineas = ["# Revisión de la carpeta antes de dársela a una IA", "",
                   f"Carpeta: `{self.carpeta}` · {len(self.archivos)} documentos revisados"
-                  f" ({self.saltados} archivos de otros tipos sin revisar) · {self.segundos:.1f} s", "",
+                  f" ({self.saltados} {'archivo' if self.saltados == 1 else 'archivos'} de otros tipos sin revisar,"
+                  f" como imágenes) · {self.segundos:.1f} s", "",
                   "| Veredicto | Documentos |", "| --- | --- |"]
         lineas += [f"| {v} | {n} |" for v, n in cuenta.items()]
         if self.datos_totales():
-            lineas += ["", "Datos personales encontrados: " +
-                       ", ".join(f"{n} {t}" for t, n in self.datos_totales().items()) + "."]
+            lineas += ["", f"Datos personales encontrados: {contar(self.datos_totales())}."]
         lineas += ["", "| Documento | Veredicto | Datos personales | Riesgo de la aduana | Texto escondido |",
                    "| --- | --- | --- | --- | --- |"]
         for a in self.archivos:
-            datos = ", ".join(f"{n} {t}" for t, n in a.datos.items()) or "–"
+            datos = contar(a.datos) if a.datos else "–"
             riesgo = a.error or f"{a.riesgo} ({a.puntuacion})"
             lineas.append(f"| `{a.ruta}` | {a.veredicto} | {datos} | {riesgo} | {a.ocultos or '–'} |")
         lineas += ["", "Qué hacer: no subas los documentos con TRAMPA; los que tienen DATOS PERSONALES, "

@@ -1,0 +1,28 @@
+From: Pablo Serrano <pablo.serrano@cierzo-rutas.example>
+To: =?utf-8?q?Luc=C3=ADa_Mart=C3=ADn?= <lucia.martin@correo.example>
+Subject: Acta de la =?utf-8?q?reuni=C3=B3n?= de ayer
+Date: Tue, 24 Nov 2026 08:05:40 +0100
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="==guardian-ia-0=="
+
+--==guardian-ia-0==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+Hola, Luc=C3=ADa:
+
+Te paso el acta de la reuni=C3=B3n de ayer y el calendario de entregas de dic=
+iembre. Si ves algo raro me dices y lo cambio antes del jueves.
+
+=C2=A1Gracias!
+Pablo
+
+--==guardian-ia-0==
+Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="acta_reunion_23-11.docx"
+MIME-Version: 1.0
+
+UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA==
+
+--==guardian-ia-0==--

@@ -66,6 +66,10 @@ REGLAS = [
     Regla("CONTRASENA", re.compile(
         r"(?i)\b(?:" + PALABRAS_CLAVE + r")\s*[:=]\s*[\"']?([^\s\"',;]{3,})"),
         prioridad=8, grupo=1),
+    # Contraseña dentro de una dirección: postgres://usuario:CONTRASEÑA@servidor, https://usuario:CONTRASEÑA@web...
+    # (las cadenas de conexión a bases de datos se pegan mucho en los chats al pedir ayuda con un programa)
+    Regla("CONTRASENA", re.compile(r"\b[a-z][a-z0-9+.-]{1,20}://[^\s:/@\[\]]+:([^\s@/\[\]]{3,})@[\w.-]+"),
+          lambda valor: valor not in ("password", "contraseña", "****", "xxx"), prioridad=8, grupo=1),
     # "mi contraseña es perro123" -> solo si tiene algún número o símbolo,
     # para no tapar frases normales como "la clave es practicar"
     Regla("CONTRASENA", re.compile(
@@ -134,14 +138,70 @@ def _validar_recortando(regla: Regla, texto_trozo: str) -> Optional[str]:
     return None
 
 
+# --- Tablas (CSV, Excel, tablas de Word) ---
+# El NSS, la fecha de nacimiento, el pasaporte o la contraseña no tienen una forma propia, así que las reglas de arriba
+# necesitan la palabra al lado ("Seguridad Social: 50/..."). En una tabla esa palabra está en la CABECERA de la
+# columna y el dato, filas más abajo: se busca la cabecera y se revisa la columna entera, con el mismo validador.
+COLUMNAS = [  # (tipo, cabecera, molde del valor, validador, prioridad)
+    ("NSS", re.compile(r"(?i)seguridad social|\bnu?ss\b|\bnaf\b|afiliaci[oó]n|\bs\.\s?s\."),
+     re.compile(r"\d{2}[ /-]?\d{8}[ /-]?\d{2}"), v.nss_valido, 7),
+    ("FECHA_NACIMIENTO", re.compile(r"(?i)nacimiento|\bf\.?\s?nac\b|birth|\bdob\b"),
+     re.compile(r"\d{1,2}[/.-]\d{1,2}[/.-](?:19|20)?\d{2}"), v.fecha_valida, 6),
+    ("PASAPORTE", re.compile(r"(?i)pasaporte|passport"), re.compile(r"[A-Z]{2,3}[ -]?\d{6}"), None, 7),
+    ("CONTRASENA", re.compile(r"(?i)contrase[ñn]a|password|passwd|\bpwd\b|clave de acceso|\bpin\b"),
+     re.compile(r"[^\s\[\]]{3,64}"), None, 8),
+]
+SEPARADORES = ("\t", ";", "|", ",")
+MAX_CABECERA = 40  # una celda de cabecera es corta ("Nº afiliación S.S."), no una frase
+
+
+def detectar_en_columnas(texto: str) -> list[Hallazgo]:
+    """Datos de las columnas cuya cabecera dice qué son. Una tabla acaba en la primera fila con otro número de celdas."""
+    hallazgos = []
+    lineas, posicion = [], 0
+    for linea in texto.splitlines(keepends=True):
+        lineas.append((posicion, linea.rstrip("\r\n")))
+        posicion += len(linea)
+    i = 0
+    while i < len(lineas):
+        _, cabecera = lineas[i]
+        i += 1
+        for sep in SEPARADORES:
+            celdas = cabecera.split(sep)
+            if len(celdas) < 2 or any(len(c.strip()) > MAX_CABECERA for c in celdas):
+                continue
+            columnas = {n: regla for n, c in enumerate(celdas) for regla in COLUMNAS
+                        if c.strip() and not any(x.isdigit() for x in c) and regla[1].search(c)}
+            if not columnas:
+                continue
+            while i < len(lineas) and len(lineas[i][1].split(sep)) == len(celdas):
+                inicio_linea, linea = lineas[i]
+                desplazamiento = 0
+                for n, celda in enumerate(linea.split(sep)):
+                    if n in columnas:
+                        tipo, _, molde, validador, prioridad = columnas[n]
+                        valor = celda.strip()
+                        if valor and molde.fullmatch(valor) and (validador is None or validador(valor)):
+                            inicio = inicio_linea + desplazamiento + celda.index(valor)
+                            hallazgos.append(Hallazgo(tipo, inicio, inicio + len(valor), valor, "regex", prioridad))
+                    desplazamiento += len(celda) + len(sep)
+                i += 1
+            break
+    return hallazgos
+
+
 class DetectorRegex:
     """Busca datos sensibles usando las reglas de arriba."""
 
     def __init__(self, reglas=None, tipos_ignorados=()):
         self.reglas = [r for r in (reglas or REGLAS) if r.tipo not in tipos_ignorados]
+        self.tipos_ignorados = set(tipos_ignorados)
+        self.columnas = reglas is None  # con reglas a medida (pruebas), solo esas
 
     def detectar(self, texto: str) -> list[Hallazgo]:
         candidatos = []
+        if self.columnas:
+            candidatos += [h for h in detectar_en_columnas(texto) if h.tipo not in self.tipos_ignorados]
         for regla in self.reglas:
             for m in regla.patron.finditer(texto):
                 inicio, fin = m.span(regla.grupo)

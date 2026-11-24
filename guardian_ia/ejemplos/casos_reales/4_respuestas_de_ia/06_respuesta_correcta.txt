@@ -1,0 +1,8 @@
+Para proteger tu cuenta de Google con la verificación en dos pasos:
+
+1. Entra en https://myaccount.google.com/security (escribe tú la dirección).
+2. Pulsa «Verificación en dos pasos» y sigue los pasos.
+3. Elige como segundo paso la app Google Authenticator o una llave de seguridad, mejor que los SMS.
+4. Guarda los códigos de recuperación en un lugar seguro, fuera del ordenador.
+
+Si alguien te pide alguno de esos códigos por teléfono o por mensaje, es un intento de estafa: no se lo des.

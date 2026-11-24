@@ -39,7 +39,7 @@ def test_mejorar_mi_pregunta_en_la_web():
     web = abrir("mejorar")
     next(b for b in web.button if b.label == "Mejorar").click().run()
     assert not web.exception
-    assert web.metric[0].label == "Nota de tu pregunta" and web.metric[0].value == "30/100"
+    assert web.metric[0].label == "Nota de tu pregunta" and web.metric[0].value == "20/100"
     versiones = [c.value for c in web.code]
     assert len(versiones) == 2 and versiones[0].startswith("Ayúdame con «escribe aquí de qué se trata».")
 

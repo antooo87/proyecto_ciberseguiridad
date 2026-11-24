@@ -43,13 +43,14 @@ _SALUDO = re.compile(
     r"|espero\s+que\s+(?:est[eé]s|te\s+encuentres)\s+(?:muy\s+)?bien[\s,!.]*"
     r"|(?:perdona|disculpa)(?:\s+(?:que\s+te\s+moleste|la\s+molestia))?[\s,!.]*"
     r"|(?:mira|oye|vale|bueno)[\s,!.]+"
-    r"|(?:tengo\s+una\s+(?:duda|pregunta|consulta)|una\s+(?:duda|pregunta|consulta))\s*[,:.!]?\s*"
+    r"|(?:tengo\s+una\s+(?:duda|pregunta|consulta)|una\s+(?:duda|pregunta|consulta))"
+    r"(?:\s+(?:r[aá]pida|corta|tonta|sencilla|breve|pequeña))?\s*[,:.!]?\s*"
     r")",
     re.IGNORECASE,
 )
 _DESPEDIDA = re.compile(
     r"[\s,.!]*(?:(?:muchas\s+)?gracias(?:\s+(?:de\s+antemano|por\s+adelantado|por\s+tu\s+ayuda))?|un\s+saludo|"
-    r"saludos|besos|un\s+abrazo)[\s,.!]*$",
+    r"saludos|besos|un\s+abrazo|por\s+favor|porfa(?:vor)?|porfi|plis|please)[\s,.!]*$",
     re.IGNORECASE,
 )
 
@@ -101,6 +102,7 @@ _EMPIEZA_PREGUNTA = re.compile(r"(?i)^(por\s+qu[eé]|porqu[eé]|qu[eé]|c[oó]mo
                                r"hay\s+(?:alg[uú]n|alguna|forma|manera)|se\s+puede|puedo|debo|tengo\s+que|"
                                r"vale\s+la\s+pena|merece\s+la\s+pena)\b")
 VAGO = re.compile(r"(?i)\b(?:(?:este|ese|aquel)\s+(?:tema|asunto|problema|ejercicio|trabajo|texto|documento)|"
+                  r"un\s+(?:tema|asunto)(?:\s+del?\s+\w+)?|"
                   r"lo\s+de\s+(?:antes|arriba|ayer)|lo\s+que\s+te\s+(?:dije|he\s+dicho|comenté)|una\s+cosa|algo)\b")
 FORMATO = re.compile(r"(?i)\b(?:lista|tabla|pasos?|paso\s+a\s+paso|esquema|resumen|resumido|en\s+\d+\s+(?:palabras|"
                      r"l[ií]neas|puntos|frases|p[aá]rrafos)|ejemplos?|p[aá]rrafos?|vi[ñn]etas|puntos|corto|"
@@ -120,14 +122,25 @@ PROBLEMA = re.compile(r"(?i)\b(?:me\s+han\s+\w+|no\s+(?:me\s+)?(?:funciona|va|ca
                       r"s[eé]\s+(?:qu[eé]|c[oó]mo))|tengo\s+un\s+problema|me\s+(?:sale|aparece|da|salta)\s+(?:un\s+)?"
                       r"(?:error|aviso|mensaje|ventana)|se\s+me\s+ha|ha\s+dejado\s+de|me\s+ha\s+llegado|"
                       r"me\s+han\s+llamado|he\s+(?:pinchado|hecho\s+clic|abierto|descargado|instalado|pagado|"
-                      r"dado|enviado|metido))\b")
+                      r"dado|enviado|metido)|(?:le|les|nos|te)\s+han\s+(?:hackeado|robado|estafado|suplantado|"
+                      r"bloqueado|clonado|pirateado|entrado|quitado)|hackead[oa]s?|(?:me|le|nos)\s+piden\s+dinero|"
+                      r"me\s+(?:est[aá]n|quieren)\s+(?:estafar|chantajear|amenazar))\b")
+# Lo que se pide crear ya dice de qué trata ("un correo PARA PEDIR...", "una presentación SOBRE...")
+TEMA = re.compile(r"(?i)\b(?:sobre|acerca\s+de|de\s+(?!mi\b|tu\b|su\b)\w{4,}|para\s+(?:pedir|pedirle|decir|decirle|"
+                  r"explicar|avisar|informar|solicitar|reclamar|agradecer|felicitar|disculparme|quejarme|presentar|"
+                  r"anunciar|invitar|recordar|contar|vender|convencer|responder|contestar)|en\s+(?:el|la)\s+que|"
+                  r"que\s+(?:diga|explique|pida|cuente|hable|trate)|explicando|pidiendo|diciendo|avisando|informando|"
+                  r"contando|:)")
+# Mensajes sospechosos: mejor «¿Es una estafa?» que contárselo a un chatbot
+MENSAJE_RARO = re.compile(r"(?i)\b(?:sms|mensaje|correo|email|whatsapp|llamada)\b[^.\n]{0,30}\b(?:raro|rara|sospechos[oa]|"
+                          r"extrañ[oa]|que\s+no\s+conozco)|\b(?:me\s+ha\s+llegado|he\s+recibido)\b")
 CONTEXTO = re.compile(r"(?i)\b(?:para\s+(?:\w+\s+){1,6}|porque|ya\s+que|soy\s+\w+|trabajo\s+(?:en|como|de)|"
                       r"estudio|mi\s+(?:jefe|empresa|clase|profesor|cliente|hij[oa]|trabajo|examen|tfg|tfm)|"
                       r"nivel|principiante|experto|sin\s+conocimientos)")
 NIVEL = re.compile(r"(?i)\b(?:principiante|novato|nivel\s+\w+|experto|sin\s+conocimientos|para\s+(?:un\s+)?ni[ñn]os?|"
                    r"t[eé]cnico|sencill[oa]|f[aá]cil)\b")
 
-MIN_PALABRAS = 6
+MIN_PALABRAS = 8
 MAX_CONSEJOS = 7
 
 
@@ -206,6 +219,20 @@ def a_imperativo(nucleo: str) -> tuple[str, bool]:
     if m and m.group(2).lower() in SUBJUNTIVOS:
         infinitivo = SUBJUNTIVOS[m.group(2).lower()]
         return f"{_mayuscula(_con_clitico(infinitivo, m.group(1) or ''))} {m.group(3)}".strip(), True
+    # "necesito una presentación de X" -> "Prepárame una presentación de X"
+    m = re.match(r"(?i)^(?:necesito|quiero|quer[ií]a|me\s+hace\s+falta|tengo\s+que\s+hacer)\s+((?:un|una)\s+.+)$",
+                 sin_signos)
+    if m and TEXTO_A_CREAR.match(m.group(1)):
+        return f"Prepárame {m.group(1)}", True
+    # "Tengo que mandar X a la gestoría, cómo lo hago" -> "Tengo que mandar X a la gestoría. ¿Cómo lo hago?"
+    m = re.search(r"(?i),\s*¿?\s*((?:qué|cómo|por\s*qué|cuál(?:es)?|cuándo|dónde|quién(?:es)?|cuánt[oa]s?)\b.*|"
+                  r"(?:que|como|donde|cuando|cuanto)\s+(?:lo|la|los|las|se|me|te|le|hago|puedo|debo|tengo)\b.*)$",
+                  sin_signos)
+    if m and m.start() >= 15:
+        pregunta = m.group(1).strip()
+        primera_palabra = pregunta.split()[0].lower()
+        pregunta = _TILDES.get(primera_palabra, primera_palabra) + pregunta[len(primera_palabra):]
+        return f"{_mayuscula(sin_signos[:m.start()].strip())}. ¿{_mayuscula(pregunta)}?", True
     # "quiero saber / entender / aprender X"
     m = re.match(r"(?i)^(?:necesito|quiero|quer[ií]a|me\s+gustar[ií]a)\s+(?:saber|entender|aprender|conocer)\s+(.+)$",
                  sin_signos)
@@ -273,7 +300,13 @@ def analizar(protegido: str) -> Analisis:
         falta("Di qué quieres que haga la IA: explicar, resumir, escribir, comparar, corregir...", 25)
     if tipo == "problema":
         falta("Cuenta qué ves exactamente (el mensaje, desde cuándo pasa) y qué has probado ya: así no te dará "
-              "consejos de manual.", 10)
+              "consejos de manual.", 20 if palabras < 15 else 10)
+    if tipo == "crear" and not TEMA.search(nucleo) and not resto.strip():
+        falta("Di de qué trata: qué quieres contar, pedir o explicar (por ejemplo: «un correo a mi jefe para pedirle "
+              "el viernes libre»).", 25)
+    if tipo == "problema" and MENSAJE_RARO.search(nucleo):
+        a.consejos.append("Si es un mensaje sospechoso, pégalo en «¿Es una estafa?» del Guardián: te dice si es un "
+                          "engaño sin mandarlo a ninguna IA (y quita tus datos).")
     if re.match(r"(?i)^ay[uú]dame\s+(?:con|en)\b", peticion) and palabras < 16:
         falta("«Ayúdame con...» es muy general: di qué necesitas exactamente (que te lo explique, lo revise, lo "
               "resuma, te dé ideas...).", 10)
@@ -359,6 +392,8 @@ def versiones_por_reglas(a: Analisis) -> list[Version]:
     peticion = _con_punto(_hueco_para_el_tema(a.peticion))
     if not a.tarea:
         peticion += " («escribe aquí qué quieres que haga: explicarlo, resumirlo, revisarlo, darte ideas...»)"
+    elif a.tipo == "crear" and not TEMA.search(a.nucleo) and "\n" not in a.nucleo and "«" not in peticion:
+        peticion = peticion[:-1] + " («escribe aquí de qué trata: qué quieres contar, pedir o explicar»)."
     pasos = _pasos(a)
     marcador = MARCADOR.search(peticion)
     if marcador:

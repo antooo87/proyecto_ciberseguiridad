@@ -14,7 +14,9 @@ No sustituye al sentido común: si dudas, pregunta por otro camino (llama al nú
 
 import re
 import unicodedata
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
+from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
@@ -117,6 +119,10 @@ _SENALES = [
      r"(?:al dia|diarios|por (?:hora|tarea))|\b(?:dar me gusta|valorar (?:productos|hoteles)|tareas sencillas)\b", 3,
      "Una oferta de trabajo fácil y muy bien pagada por mensaje. Suele acabar pidiéndote dinero «para desbloquear» "
      "lo que has ganado."),
+    ("pasa_a_whatsapp", r"\b(?:escribenos|escribeme|contactanos|contacta(?:nos)?|hablanos|hablame|agreganos|anademe|"
+     r"sigamos|continuamos)\b[^.\n]{0,40}\b(?:whatsapp|telegram|signal)\b", 2,
+     "Te pide seguir la conversación por WhatsApp o Telegram, donde no hay filtros ni nadie que lo vigile: así "
+     "trabajan las falsas ofertas de empleo y de inversión."),
     ("cambio_cuenta", r"\b(?:hemos cambiado (?:de|nuestra) (?:cuenta|entidad|banco)|nuev[ao]s? (?:cuenta|iban|numero de "
      r"cuenta|datos bancarios)|a partir de ahora (?:los pagos|las transferencias|ingrese|ingresa)|(?:actualizar?|"
      r"modificar?) (?:los|nuestros) datos bancarios)", 5,
@@ -173,18 +179,23 @@ TIPOS = [
     ("La estafa del «hijo en apuros»", {"familiar"}, None),
     ("Robo de tu cuenta: te piden un código", {"pide_codigo"}, None),
     ("Fraude del cambio de cuenta bancaria (o «del CEO»)", {"cambio_cuenta"}, None),
+    ("Correo con un archivo peligroso (virus)", {"adjunto_ejecutable"}, None),
     ("Falso soporte técnico", {"aviso_virus", "acceso_remoto"}, None),
     ("Bizum inverso: si aceptas, pagas tú", {"bizum_inverso", "solicitud_bizum"}, None),
     ("Falsa inversión", {"inversion"}, None),
     ("Falsa oferta de trabajo", {"empleo_falso"}, None),
+    ("Te llevan a WhatsApp o Telegram para engañarte con calma", {"pasa_a_whatsapp"}, None),
     ("SMS o correo falso de paquetería (smishing)", {"paquete", "pago_pequeno"}, None),
-    ("Suplantación de tu banco (phishing)", {"pide_datos", "amenaza", "enlace_no_oficial", "imita_marca"}, BANCOS),
-    ("Falsa devolución o multa de Hacienda", {"premio", "amenaza", "pide_datos", "enlace_no_oficial"},
-     {"agenciatributaria"}),
-    ("Falsa multa de la DGT", {"amenaza", "pide_datos", "enlace_no_oficial", "pago_pequeno"}, {"dgt"}),
+    ("Suplantación de tu banco (phishing)", {"pide_datos", "amenaza", "enlace_no_oficial", "imita_marca",
+                                              "remitente_falso", "enlace_enganoso"}, BANCOS),
+    ("Falsa devolución o multa de Hacienda", {"premio", "amenaza", "pide_datos", "enlace_no_oficial",
+                                              "remitente_falso", "enlace_enganoso"}, {"agenciatributaria"}),
+    ("Falsa multa de la DGT", {"amenaza", "pide_datos", "enlace_no_oficial", "pago_pequeno", "remitente_falso"},
+     {"dgt"}),
     ("Falso premio o sorteo", {"premio"}, None),
-    ("Phishing: se hacen pasar por una empresa para quitarte datos", {"pide_datos", "enlace_no_oficial", "imita_marca"},
-     None),
+    ("Correo con texto escondido para engañar a la IA que te lo resume", {"texto_oculto"}, None),
+    ("Phishing: se hacen pasar por una empresa para quitarte datos", {"pide_datos", "enlace_no_oficial", "imita_marca",
+                                                                      "remitente_falso", "enlace_enganoso"}, None),
     ("Te piden dinero por mensaje", {"pide_dinero"}, None),
 ]
 
@@ -206,6 +217,12 @@ QUE_HACER = {
     "Fraude del cambio de cuenta bancaria (o «del CEO»)": [
         "No pagues a la cuenta nueva hasta confirmarlo llamando al proveedor o a tu jefe al teléfono de siempre, no "
         "al del correo.", "Un cambio de cuenta nunca se acepta solo por correo: avisa a quien lleve los pagos."],
+    "Correo con un archivo peligroso (virus)": [
+        "No abras el adjunto: borra el correo. Si esperabas una factura, pídesela al proveedor por otro camino.",
+        "Si ya lo has abierto, desconecta el PC de Internet y avisa a sistemas (o pásale un antivirus)."],
+    "Correo con texto escondido para engañar a la IA que te lo resume": [
+        "No hagas caso de avisos que solo salen en el resumen de la IA: ni Google, ni Microsoft, ni tu banco te "
+        "avisan así.", "Borra el correo o márcalo como spam; si es del trabajo, reenvíalo a sistemas."],
     "Falso soporte técnico": [
         "Cuelga o cierra el aviso: Microsoft, Apple o tu compañía no te llaman para decirte que tienes virus.",
         "No instales AnyDesk, TeamViewer ni nada que te pidan, y no le des acceso a tu PC a nadie."],
@@ -215,6 +232,9 @@ QUE_HACER = {
     "Falsa inversión": [
         "No metas dinero ni des tus datos. Comprueba en la CNMV si la empresa está autorizada.",
         "Desconfía de anuncios con famosos y de «asesores» que te escriben por WhatsApp o Telegram."],
+    "Te llevan a WhatsApp o Telegram para engañarte con calma": [
+        "No sigas la conversación por WhatsApp o Telegram con alguien que no conoces.",
+        "Si es una empresa de verdad, búscala tú y escríbele por su web oficial."],
     "Falsa oferta de trabajo": [
         "No pagues nada para «desbloquear» ganancias ni des tus datos bancarios.",
         "Un trabajo de verdad no se consigue dando «me gusta» por WhatsApp o Telegram."],
@@ -296,9 +316,10 @@ def primeros_auxilios(texto: str) -> list[str]:
     return [consejo for _tipo, patron, consejo in YA_PASO if patron.search(p)]
 
 
-def analizar(texto: str) -> InformeEstafa:
+def analizar(texto: str, extra: Sequence[Senal] = ()) -> InformeEstafa:
+    """`extra`: pistas que no salen del texto (las del correo entero: remitente, enlaces, adjuntos...)."""
     p = plano(texto)
-    senales: list[Senal] = []
+    senales: list[Senal] = list(extra)
     for tipo, patron, peso, explicacion in SENALES:
         m = patron.search(p)
         if m:
@@ -332,3 +353,112 @@ def analizar(texto: str) -> InformeEstafa:
         "Aun así, si te pide datos, dinero o prisa, compruébalo por otro camino antes de hacer nada."]
     return InformeEstafa(nivel, puntuacion, tipo, sorted(senales, key=lambda s: -s.peso), que_hacer,
                          primeros_auxilios(texto))
+
+
+# ------------------------------------------------------------------ correos enteros (.eml)
+_PARECE_WEB = re.compile(r"^(?:https?://)?(?:www\.)?((?:[a-z0-9-]+\.)+[a-z]{2,})(?:[/:?#]\S*)?$", re.IGNORECASE)
+
+
+def _base(host: str) -> str:
+    partes = host.lower().strip(".").split(".")
+    if len(partes) >= 3 and partes[-2] in ("gob", "com", "org", "co", "gov", "edu"):
+        return ".".join(partes[-3:])
+    return ".".join(partes[-2:])
+
+
+def senales_del_correo(correo) -> list[Senal]:
+    """Pistas que solo se ven en el correo entero: quién lo manda de verdad, adónde llevan los enlaces, qué esconde
+    y qué adjunta. `correo` es un guardian.correo.Correo."""
+    from .correo import adjunto_peligroso
+
+    senales: list[Senal] = []
+    for m in _MARCA.finditer(plano(correo.nombre)):
+        oficiales = _oficiales(MARCAS_TEXTO[m.group(1)])
+        dominio = correo.dominio
+        if oficiales and dominio and not any(dominio == o or dominio.endswith("." + o) for o in oficiales):
+            senales.append(Senal(
+                "remitente_falso", f"Dice ser «{correo.nombre}», pero escribe desde {dominio}, que no es su dominio "
+                f"oficial ({', '.join(oficiales)}). Cualquiera puede poner el nombre que quiera en «De»: lo que "
+                "cuenta es lo que va detrás de la @.", correo.de, 5))
+            break
+    if correo.responder_a and correo.dominio_respuesta and correo.dominio_respuesta != correo.dominio:
+        senales.append(Senal(
+            "responder_a_otro", f"Si contestas, tu respuesta no irá a {correo.dominio or 'quien dice ser'} sino a "
+            f"{correo.dominio_respuesta}: es el truco del fraude del CEO para que el jefe de verdad no se entere.",
+            correo.responder_a, 3))
+    for texto, destino in correo.enlaces:
+        visto, real = _PARECE_WEB.match(texto.strip()), (urlparse(destino).hostname or "").lower()
+        if visto and real and _base(visto.group(1)) != _base(real):
+            senales.append(Senal(
+                "enlace_enganoso", f"El enlace dice «{texto.strip()[:60]}», pero en realidad lleva a {real}. Es la "
+                "trampa más clásica: pasa el ratón por encima (sin pinchar) y mira la dirección de verdad.",
+                destino, 5))
+            break
+    escondido = next((o for o in correo.ocultos if len(re.findall(r"\w+", o)) >= 4), None)
+    if escondido:
+        senales.append(Senal(
+            "texto_oculto", "El correo esconde texto que tú no ves (letra de tamaño 0, blanca o invisible). Se usa "
+            "para engañar a la IA que te resume el correo (pasó con Gemini en Gmail en 2025) o para colarse en los "
+            "filtros de spam.", " ".join(escondido.split())[:160], 5))
+    for nombre in correo.adjuntos:
+        motivo = adjunto_peligroso(nombre)
+        if motivo:
+            senales.append(Senal("adjunto_ejecutable", motivo, nombre, 5))
+            break
+    return senales
+
+
+def analizar_correo(datos: bytes):
+    """Analiza un correo guardado (.eml). Devuelve (informe, correo)."""
+    from .correo import leer_correo
+
+    correo = leer_correo(datos)
+    return analizar(correo.como_texto(), senales_del_correo(correo)), correo
+
+
+EXTENSIONES_MENSAJES = {".eml", ".txt", ".msg"}
+
+
+@dataclass
+class MensajeRevisado:
+    archivo: str
+    informe: Optional[InformeEstafa]
+    de: str = ""
+    asunto: str = ""
+    error: Optional[str] = None
+
+    def a_dict(self) -> dict:
+        return {"archivo": self.archivo, "de": self.de, "asunto": self.asunto, "error": self.error,
+                **({"nivel": self.informe.nivel, "puntuacion": self.informe.puntuacion, "tipo": self.informe.tipo,
+                    "pistas": [s.tipo for s in self.informe.senales]} if self.informe else {})}
+
+
+def revisar_mensaje(datos: bytes, nombre: str) -> MensajeRevisado:
+    """Un correo (.eml) o un mensaje en texto (.txt) guardado en un archivo."""
+    if nombre.lower().endswith(".msg"):
+        return MensajeRevisado(nombre, None, error="Los .msg de Outlook no se leen todavía: guárdalo como .eml "
+                                                   "(Archivo > Guardar como) o copia el texto.")
+    if nombre.lower().endswith(".eml"):
+        informe, correo = analizar_correo(datos)
+        return MensajeRevisado(nombre, informe, correo.de, correo.asunto)
+    texto = datos.decode("utf-8", errors="replace")
+    return MensajeRevisado(nombre, analizar(texto), asunto=texto.strip().splitlines()[0][:80] if texto.strip() else "")
+
+
+def revisar_bandeja(carpeta: str) -> list[MensajeRevisado]:
+    """Todos los correos (.eml) y mensajes (.txt) de una carpeta, del más peligroso al menos."""
+    raiz = Path(carpeta)
+    if not raiz.is_dir():
+        raise NotADirectoryError(f"{carpeta} no es una carpeta")
+    resultados = []
+    for ruta in sorted(raiz.rglob("*")):
+        if ruta.is_file() and ruta.suffix.lower() in EXTENSIONES_MENSAJES and ruta.stat().st_size <= 25 * 2**20:
+            resultados.append(revisar_mensaje(ruta.read_bytes(), str(ruta.relative_to(raiz))))
+    return ordenar(resultados)
+
+
+def ordenar(revisados: list[MensajeRevisado]) -> list[MensajeRevisado]:
+    """Del más peligroso al menos (y los que no se han podido leer, al final)."""
+    orden = {"ALTO": 0, "MEDIO": 1, "BAJO": 2}
+    return sorted(revisados, key=lambda r: (orden.get(r.informe.nivel, 3) if r.informe else 4,
+                                            -(r.informe.puntuacion if r.informe else 0), r.archivo))

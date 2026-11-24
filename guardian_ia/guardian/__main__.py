@@ -24,6 +24,7 @@ Uso (desde la carpeta del proyecto, con el entorno virtual activado):
 import argparse
 import json
 import os
+import re
 import sys
 import tempfile
 
@@ -150,9 +151,58 @@ def cmd_mejorar(args):
     return 0
 
 
+_FIN_DE_FRASE = re.compile(r"(?<=[.!?])\s")
+
+
+def _cmd_bandeja(carpeta: str, como_json: bool) -> int:
+    """Revisa todos los correos (.eml) y mensajes (.txt) de una carpeta y los ordena del más peligroso al menos."""
+    from .estafas import revisar_bandeja
+    try:
+        revisados = revisar_bandeja(carpeta)
+    except NotADirectoryError as e:
+        print(f"{ROJO}{e}{FIN}")
+        return 1
+    if como_json:
+        print(json.dumps([r.a_dict() for r in revisados], ensure_ascii=False, indent=2))
+    else:
+        if not revisados:
+            print(f"{AMARILLO}No hay correos (.eml) ni mensajes (.txt) en {carpeta}.{FIN}")
+            return 0
+        icono = {"ALTO": f"{ROJO}● ESTAFA  {FIN}", "MEDIO": f"{AMARILLO}● DUDOSO  {FIN}", "BAJO": f"{VERDE}● NORMAL  {FIN}"}
+        print(f"{NEGRITA}Bandeja revisada: {carpeta}{FIN}\n")
+        for r in revisados:
+            if r.informe is None:
+                print(f"{GRIS}○ NO LEÍDO {r.archivo}: {r.error}{FIN}")
+                continue
+            print(f"{icono[r.informe.nivel]}{NEGRITA}{r.asunto or r.archivo}{FIN}")
+            print(f"           {GRIS}{r.de or r.archivo}{FIN}")
+            if r.informe.tipo:
+                print(f"           Parece: {r.informe.tipo}")
+            for senal in r.informe.senales[:2]:
+                primera_frase = _FIN_DE_FRASE.split(senal.explicacion)[0]
+                print(f"           {GRIS}· {primera_frase}{FIN}")
+        altos = sum(1 for r in revisados if r.informe and r.informe.nivel == "ALTO")
+        dudosos = sum(1 for r in revisados if r.informe and r.informe.nivel == "MEDIO")
+        print(f"\n{NEGRITA}{len(revisados)} mensajes: {ROJO}{altos} casi seguro estafas{FIN}{NEGRITA}, "
+              f"{AMARILLO}{dudosos} dudosos{FIN}{NEGRITA}, {len(revisados) - altos - dudosos} sin señales.{FIN}")
+        print(f"{GRIS}Para ver las pistas de uno: python -m guardian estafa --archivo CARPETA/ARCHIVO.eml{FIN}")
+    return 2 if any(r.informe and r.informe.nivel == "ALTO" for r in revisados) else 0
+
+
 def cmd_estafa(args):
-    from .estafas import analizar
-    if args.archivo:
+    from .estafas import analizar, analizar_correo
+    if args.carpeta:
+        return _cmd_bandeja(args.carpeta, args.json)
+    correo = None
+    if args.archivo and args.archivo.lower().endswith(".eml"):
+        try:
+            with open(args.archivo, "rb") as f:
+                informe, correo = analizar_correo(f.read())
+        except OSError as e:
+            print(f"{ROJO}No puedo leer {args.archivo}: {e}{FIN}")
+            return 1
+        texto = correo.texto or correo.asunto
+    elif args.archivo:
         lectura = _leer(args.archivo)
         if lectura is None:
             return 1
@@ -162,7 +212,10 @@ def cmd_estafa(args):
     if not texto.strip():
         print(f'{AMARILLO}Pega el mensaje: python -m guardian estafa "Correos: su paquete está retenido..."{FIN}')
         return 1
-    informe = analizar(texto)
+    if correo is None:
+        informe = analizar(texto)
+    else:
+        print(f"{GRIS}De: {correo.de}\nAsunto: {correo.asunto}{FIN}\n")
     if args.json:
         print(json.dumps(informe.a_dict(), ensure_ascii=False, indent=2))
         return 0
@@ -384,12 +437,14 @@ def cmd_escanear(args):
         print(json.dumps(informe.a_dict(), ensure_ascii=False, indent=2))
         return 2 if informe.cuenta()[TRAMPA] else 0
     color = {TRAMPA: ROJO, DATOS: AMARILLO, ILEGIBLE: GRIS, LIMPIO: VERDE}
+    from .tipos import contar
+    saltados = _cuantos(informe.saltados, "archivo de otro tipo", "archivos de otros tipos")
     print(f"{NEGRITA}Carpeta {informe.carpeta}{FIN}: {len(informe.archivos)} documentos revisados "
-          f"{GRIS}({informe.saltados} archivos de otros tipos sin revisar, {informe.segundos:.1f} s){FIN}")
+          f"{GRIS}({saltados} sin revisar, por ejemplo imágenes; {informe.segundos:.1f} s){FIN}")
     print("  " + " · ".join(f"{color[v]}{n} {v.lower()}{FIN}" for v, n in informe.cuenta().items() if n) + "\n")
     for a in informe.archivos:
         detalle = a.error or ", ".join(
-            [f"{n} {t}" for t, n in a.datos.items()]
+            ([contar(a.datos)] if a.datos else [])
             + ([f"aduana: riesgo {a.riesgo} ({a.puntuacion})"] if a.riesgo != "NINGUNO" else [])
             + ([f"{a.ocultos} trozo(s) de texto escondido"] if a.ocultos else []))
         print(f"{color[a.veredicto]}● {a.veredicto:<17}{FIN} {a.ruta}  {GRIS}{detalle}{FIN}")
@@ -666,9 +721,11 @@ def cmd_informe(args):
     print(f"{NEGRITA}Datos tapados antes de llegar a la IA:{FIN} {VERDE}{actividad.datos_tapados}{FIN}"
           + (f" en {_cuantos(actividad.mensajes_con_datos, 'mensaje', 'mensajes')}" if actividad.datos else ""))
     if actividad.datos:
-        ancho, maximo = max(map(len, actividad.datos)), max(actividad.datos.values())
+        from .tipos import nombre
+        nombres = {tipo: nombre(tipo, n) for tipo, n in actividad.datos.items()}
+        ancho, maximo = max(map(len, nombres.values())), max(actividad.datos.values())
         for tipo, n in actividad.datos.most_common():
-            print(f"  {tipo:<{ancho}} {n:>5}  {AZUL}{'█' * max(1, round(24 * n / maximo))}{FIN}")
+            print(f"  {nombres[tipo]:<{ancho}} {n:>5}  {AZUL}{'█' * max(1, round(24 * n / maximo))}{FIN}")
 
     trampas, bloqueados = actividad.documentos_con_trampa, actividad.documentos_bloqueados
     print(f"{NEGRITA}Documentos o textos pegados con trampas:{FIN} "
@@ -755,6 +812,7 @@ def main(argv=None):
     s = sub.add_parser("estafa", help="¿es una estafa este SMS, correo o WhatsApp? Las pistas y qué hacer")
     s.add_argument("texto", nargs="?", help="el mensaje (si no lo pones, se lee de la entrada)")
     s.add_argument("--archivo", help="leer el mensaje de un archivo (.eml, .txt, .html, Word, PDF...)")
+    s.add_argument("--carpeta", help="revisar todos los correos (.eml) y mensajes (.txt) de una carpeta")
     s.add_argument("--json", action="store_true", help="sacar el resultado en JSON")
     s.set_defaults(func=cmd_estafa)
 
