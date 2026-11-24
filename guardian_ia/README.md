@@ -110,7 +110,7 @@ python -m guardian estafa --carpeta ejemplos\casos_reales\3_bandeja_de_entrada  
 2. En Chrome, Edge o Brave abre `chrome://extensions`, activa el **modo de desarrollador**, pulsa **Cargar descomprimida** y elige la carpeta `guardian_ia/extension`.
 3. En las opciones que se abren, pega la clave y pulsa **Guardar y probar**: debe salir «Conectado».
 
-Para probarla sin cuenta ni Internet: icono de la extensión → **Página de prueba** (un chat de mentira con cuatro ejemplos). Encima del cuadro del chat sale el botón **«✨ Mejorar»** (o `Alt+M`), y con clic derecho sobre cualquier texto seleccionado (un correo en Gmail, un WhatsApp Web...) → **«Guardián: ¿es una estafa?»**. Cómo funciona y por qué es segura: [`extension/LEEME.md`](extension/LEEME.md).
+Para probarla sin cuenta ni Internet: icono de la extensión → **Página de prueba** (un chat de mentira con cinco ejemplos). Encima del cuadro del chat sale el botón **«✨ Mejorar»** (o `Alt+M`), y con clic derecho sobre cualquier texto seleccionado (un correo en Gmail, un WhatsApp Web...) → **«Guardián: ¿es una estafa?»**. Cómo funciona y por qué es segura: [`extension/LEEME.md`](extension/LEEME.md).
 
 Dentro del chat: `/doc RUTA` adjunta un documento (texto, Word o PDF) a la siguiente pregunta, `/ver` enseña u oculta lo que ve la IA, `/nueva` vacía la bóveda de datos y `/salir` cierra.
 
