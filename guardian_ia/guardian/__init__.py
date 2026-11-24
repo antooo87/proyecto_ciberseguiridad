@@ -8,4 +8,4 @@ Módulos:
   4. revisor     -> revisa la IA instalada en el PC: extensiones, conectores MCP, modelos, Ollama
 """
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"

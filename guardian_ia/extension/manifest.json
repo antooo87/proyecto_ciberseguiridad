@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Guardián IA",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Tapa tus datos personales antes de que lleguen a ChatGPT, Claude o Gemini, con el Guardián IA de tu PC.",
   "icons": {
     "16": "iconos/icono16.png",

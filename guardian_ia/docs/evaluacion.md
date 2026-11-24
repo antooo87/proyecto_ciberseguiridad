@@ -197,7 +197,31 @@ El punto 5 de la sección anterior dejó un riesgo abierto: aunque el Guardián 
 - Hablar de "verificar" no siempre es repetir la trampa: muchas respuestas solo cuentan que la acción se ha bloqueado («no puedo enviar el correo de verificación») o, sin Guardián, que ya la hicieron («he enviado la verificación»). Esas no se marcan, y está bien: no le piden nada a la persona.
 - **Ojo: no es una medida a ciegas.** La regla se ajustó mirando estas mismas respuestas (por ejemplo, para no marcar «¿te gustaría que te envíe un correo con las ofertas?»). Para medirla a ciegas hacen falta respuestas nuevas, de otro modelo o de otro PC: `evaluacion/repetir_medidas.py --agente` las genera y les pasa la misma medida.
 
-## 8. Velocidad
+## 8. Casos reales y difíciles (0.5.0; no es una medida a ciegas)
+
+Las pruebas anteriores usan textos cortos. Para ver cómo se porta con documentos como los de una empresa de verdad, la 0.5.0 añade `ejemplos/casos_reales/`: una empresa inventada de logística de Zaragoza con su carpeta de RRHH, un contrato largo, una bandeja de correo, respuestas de IA y preguntas mal hechas. Los crea `generar.py`, que **apunta cada dato que mete** en cada archivo, así que la prueba (`tests/test_casos_reales.py`) no mira si «encuentra algo», sino si encuentra exactamente esos datos, ni uno más ni uno menos.
+
+| Conjunto | Qué se comprueba | Resultado |
+| --- | --- | --- |
+| Carpeta de RRHH: 15 archivos (Excel, Word, PowerPoint, PDF, HTML, CSV, `.eml`, texto y una imagen) | El veredicto y los datos exactos de cada archivo | 14 de 14 con su veredicto y sus datos exactos (6 TRAMPA, 5 DATOS PERSONALES, 3 LIMPIO); la imagen se cuenta como «sin revisar» |
+| Siete formas de esconder órdenes para la IA | Hoja muy oculta, texto oculto de Word, letra blanca de 1 pt, diapositiva oculta, celda `;;;`, `display:none` con imagen espía y plantilla remota | 7 de 7; las dos presentaciones con letra blanca sobre fondo oscuro (que sí se ve), sin alarma |
+| Contrato de mantenimiento con 51 datos en cláusulas, tablas y anexos | Que la copia anonimizada no deje ninguno | 51 de 51 tapados (CIF, DNI, NIE, IBAN, teléfonos, correos, IP y matrículas) |
+| Bandeja de 13 correos `.eml` (10 estafas y 3 normales) | Estafas en ALTO y normales en BAJO, con las pistas del correo entero | 10 de 10 y 3 de 3 |
+| Seis respuestas de IA | El nivel de cada una (3 PELIGRO, 2 AVISO, 1 OK) | 6 de 6 |
+| Diez preguntas mal hechas | Tipo de petición, nota baja y datos tapados | 10 de 10 |
+
+**Lo importante es lo que salió al probarlos**, porque con los ejemplos cortos no se veía:
+
+- El número de la Seguridad Social en una columna de Excel no se tapaba: la palabra que lo anuncia («Nº afiliación S.S.») está en la cabecera, no al lado del número. Ahora el escudo mira las cabeceras de las tablas.
+- La contraseña dentro de una cadena de conexión (`postgres://usuario:clave@servidor`) no se tapaba.
+- Los correos `.eml` se leían «a pelo»: con la codificación quoted-printable un IBAN quedaba partido en dos líneas y no se reconocía. Ahora se descodifican.
+- «Mejorar mi pregunta» entendía mal seis de las diez preguntas (por ejemplo, «hazme un correo para mi jefe» sacaba un 100 aunque no dice de qué trata).
+
+Todo eso se arregló **mirando estos mismos casos**, y los casos se escribieron a la vez que las reglas. Por eso estos resultados no valen como medida a ciegas: sirven para enseñar el Guardián con ejemplos densos y para que ninguna mejora futura rompa lo que ya funciona. Sin la IA local, el contrato anonimizado sigue llevando los nombres y las direcciones (las reglas no los ven; para eso está `--ia`).
+
+Para comprobar que las reglas nuevas no estropean nada, se repitió la medida solo con reglas (`python -m guardian evaluar`): en el conjunto de desarrollo y en la prueba ciega salen **los mismos números que en la 0.4.0**, sin ninguna falsa alarma nueva.
+
+## 9. Velocidad
 
 | Pieza | Sin gráfica (servidor de pruebas) |
 | --- | --- |
@@ -208,7 +232,7 @@ El punto 5 de la sección anterior dejó un riesgo abierto: aunque el Guardián 
 
 En el portátil con la RTX 4070 (8 GB) el 9B cabe entero en la gráfica con contexto de 8192, y debería ir varias veces más rápido. Queda pendiente medirlo allí: `evaluacion/repetir_medidas.py` lo hace en un comando y apunta el procesador, la gráfica y el tiempo de cada paso.
 
-## 9. Cómo repetirlo
+## 10. Cómo repetirlo
 
 Todo de una vez, en una carpeta nueva y sin tocar los resultados guardados (`evaluacion/medidas_FECHA/resumen.md`):
 
@@ -233,7 +257,7 @@ python evaluacion\medir_eco.py                                # eco de la trampa
 python -m guardian demo                                       # recorrido de un minuto, sin Ollama
 ```
 
-## 10. Límites de la evaluación
+## 11. Límites de la evaluación
 
 - Los conjuntos propios son pequeños (191 textos y 60 documentos) y los públicos se usan en muestras de 100. Una diferencia de un 5 % puede ser un solo caso.
 - La prueba ciega la escribió la misma persona que diseñó las reglas, aunque con otras frases. Por eso se añadieron CoNLL-2002 y BIPIA.

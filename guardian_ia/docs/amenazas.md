@@ -93,6 +93,15 @@ La extensión vive dentro de webs que no son nuestras, así que se diseñó supo
 
 Riesgo residual: la extensión depende de cómo está hecha cada web; si una web cambia su página, puede dejar de leer las respuestas (el clic derecho «Guardián: ver con mis datos» sirve en cualquier web). Una extensión maliciosa instalada en el mismo navegador podría leer lo que se ve en la página, igual que con cualquier otra web: para eso está el revisor del PC (R9).
 
+### 3.6 «¿Es una estafa?», los correos y «Mejorar mi pregunta» (0.5.0)
+
+Estas piezas las va a usar gente que no sabe de informática, así que el riesgo principal no es técnico: es que la persona se fíe demasiado del resultado.
+
+- **Un «no veo pistas» no es un «es seguro».** Las reglas solo reconocen las pistas que conocen; una estafa escrita de otra forma puede pasar. Por eso el resultado bajo dice «No veo señales claras de estafa» y siempre añade que, si te pide datos, dinero o prisa, lo compruebes por otro camino. Lo mismo en el juego: tiene mensajes legítimos para no enseñar a desconfiar de todo ni a fiarse de todo.
+- **Un correo preparado contra el Guardián.** Un `.eml` puede traer cabeceras rotas, codificaciones inventadas o HTML retorcido. El lector usa la biblioteca estándar de Python, nunca falla (se queda con lo que puede leer), no pinta el HTML ni carga imágenes remotas, no abre los adjuntos (solo mira su nombre) y en una bandeja se salta los archivos de más de 25 MB. No abre nada de Internet.
+- **Texto escondido para la IA que te resume el correo** (el caso de Gemini en Gmail en 2025). Se separa lo que se ve de lo escondido (tamaño 0, blanco sin fondo, `display:none`, comentarios): «¿Es una estafa?» lo cuenta como pista y la aduana lo quita antes de que el correo llegue a un chatbot.
+- **Que la mejora cambie lo que querías decir o meta datos.** La pregunta se tapa antes de nada; la IA (solo local) trabaja con marcadores y lo que devuelve se comprueba: si quita o cambia un marcador, mete un dato que no estaba o se alarga demasiado, se descarta y se queda la versión de reglas. Lo que no sabe, no lo inventa: deja un hueco «escribe aquí...». Y si la pregunta parece una orden escondida (alguien que te ha hecho copiar un texto), avisa.
+
 ## 4. Matriz de riesgos
 
 Probabilidad e impacto sin Guardián, control principal y riesgo que queda con él.
@@ -116,6 +125,9 @@ Probabilidad e impacto sin Guardián, control principal y riesgo que queda con �
 | R15 | Pegar en un chatbot de la web datos personales o un documento con trampa | Alta | Alto | Extensión del navegador: tapa al pegar y antes de enviar, aduana para lo pegado, fallo cerrado sin servicio | Medio |
 | R16 | Una web abusa de la extensión o del servicio local para leer tus datos | Baja | Alto | Clave solo en el trabajador de fondo, Origin solo de extensiones, panel que la web no puede leer, `textContent` | Bajo |
 | R17 | Texto escondido en PowerPoint o Excel (blanco, diminuto, hojas ocultas, `;;;`) | Media | Alto | Lectores de PowerPoint y Excel: la IA solo recibe lo visible; fórmulas DDE y macros avisadas | Bajo |
+| R18 | Picar en una estafa por SMS, WhatsApp o correo (enlace falso, adjunto disfrazado, fraude del CEO) | Alta | Alto | «¿Es una estafa?»: pistas explicadas, remitente real, enlaces engañosos, adjuntos peligrosos, primeros auxilios y el juego para aprender | Medio |
+| R19 | Correo con texto escondido que manipula a la IA que lo resume | Media | Alto | Lector de correos: lo escondido se separa, se avisa y la aduana lo quita | Bajo |
+| R20 | La persona se fía de un «no veo pistas» | Media | Alto | El resultado nunca dice «es seguro» y siempre recomienda comprobarlo por otro camino | Medio |
 
 El riesgo residual medio de varias filas es honesto: ninguna defensa contra la prompt injection es perfecta hoy. La estrategia es **defensa en profundidad**: varias capas distintas para que un ataque tenga que saltarlas todas.
 
@@ -123,7 +135,8 @@ El riesgo residual medio de varias filas es honesto: ninguna defensa contra la p
 
 - Las reglas cubren sobre todo formatos españoles y frases en español e inglés.
 - No se analizan imágenes (texto dentro de una foto o captura).
-- La aduana lee texto, HTML, Word, PowerPoint, Excel y PDF. Faltan los formatos antiguos (`.doc`, `.xls`, `.ppt`), OpenDocument y los correos con adjuntos.
+- La aduana lee texto, HTML, Word, PowerPoint, Excel, PDF y correos `.eml`. Faltan los formatos antiguos (`.doc`, `.xls`, `.ppt`), OpenDocument, los `.msg` de Outlook y lo que hay dentro de los adjuntos de un correo (solo se mira su nombre).
+- «¿Es una estafa?» y «Mejorar mi pregunta» sin IA funcionan con reglas: una estafa escrita de una forma nueva puede no tener ninguna de las pistas que conocen.
 - El eco de la trampa reconoce peticiones de verificar cuentas, mandar datos, pagar, instalar, llamar o entrar en webs, en español y en inglés; una trampa que pida otra cosa necesitaría una categoría nueva.
 - La calidad del detector y de los jueces depende del modelo: el 9B acierta más que el 2B pero tarda más.
 - El revisor conoce las rutas de las apps más usadas en Windows, macOS y Linux; una app nueva necesita añadir su ruta.

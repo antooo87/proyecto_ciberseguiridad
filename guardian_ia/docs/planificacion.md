@@ -12,6 +12,7 @@ El planteamiento (primera entrega, 1 de octubre de 2026) repartía el trabajo en
 | H3 · Versión completa | 24-oct-2026 | 0.3.0 | Los cuatro módulos, modo proxy con control de acciones, evaluación con conjuntos públicos y ataque real a un agente, demostración, pruebas automáticas y documentación |
 | H4 · Validación y arreglos | 26-oct a 23-nov-2026 | 0.4.0 | Arreglos de la revisión (IBAN en minúsculas, correo con un DNI dentro, `defusedxml`), integración continua en GitHub (pruebas en Windows y Linux, la extensión en un Chromium de verdad y el instalador de Windows), `guardian doctor` e instalador `instalar.ps1`. **Falta repetir las medidas con el 9B en la GPU del portátil**: `evaluacion/repetir_medidas.py --ia --agente` lo deja en un comando |
 | H5 · Extensión del navegador | 23-nov-2026 | 0.4.0 | Extensión para ChatGPT, Claude, Gemini, Copilot, DeepSeek, Mistral, Perplexity, Qwen y Grok que habla con el servicio local del Guardián (`guardian servicio`): tapa al pegar y antes de enviar, aduana para lo pegado, revisión de la respuesta y panel con tus datos reales |
+| H5b · Para quien no sabe de informática | 24-nov-2026 | 0.5.0 | «Mejorar mi pregunta», «¿Es una estafa?» (con correos `.eml` y bandejas), el juego «¿Lo detectas?», la app de escritorio con acceso directo y la batería de casos reales y difíciles |
 
 Además, en la 0.4.0 entraron cosas que no estaban en el plan y que salieron de usar el programa y de los puntos débiles de la evaluación:
 
@@ -20,6 +21,13 @@ Además, en la 0.4.0 entraron cosas que no estaban en el plan y que salieron de 
 - **Panel de actividad** (`guardian informe`, pestaña de la web y panel de la extensión), sin guardar ningún dato.
 - **Revisar carpetas y anonimizar documentos** (`guardian escanear`, `guardian anonimizar`).
 - Cuatro tipos de dato nuevos en el escudo: CIF, número de la Seguridad Social, pasaporte y fecha de nacimiento.
+
+Y en la 0.5.0 (23 y 24 de noviembre), pensando en la gente que no sabe de informática, que es quien más usa los chatbots sin saber los riesgos:
+
+- **«✨ Mejorar mi pregunta»**: qué le falta a lo que vas a preguntar y dos versiones mejores para elegir, en la terminal, la web y la extensión.
+- **«🚨 ¿Es una estafa?»** para SMS, WhatsApp y correos, también correos guardados (`.eml`) y bandejas enteras, con primeros auxilios si ya has picado, y el juego **«¿Lo detectas?»** para aprender a verlas.
+- **App de escritorio**: doble clic en «Guardián IA» y se abre todo, con una web con portada y menú.
+- **Casos reales y difíciles**: una empresa inventada con documentos densos, que sacaron fallos que los ejemplos cortos no enseñaban (ver [`evaluacion.md`](evaluacion.md), sección 8).
 
 ## El plan de 12 semanas frente a lo hecho
 
@@ -45,6 +53,7 @@ Además, en la 0.4.0 entraron cosas que no estaban en el plan y que salieron de 
 | API de Claude para el verificador (unos céntimos por consulta) | Todo con IA local. Las piezas que ven datos sin tapar se niegan a usar una IA remota | Coste 0 € y ningún dato sale del PC |
 | Extensión del navegador en la semana 9 | Hecha en la 0.4.0, después del proxy | Los agentes y programas de escritorio son los que pueden hacer acciones peligrosas, así que el proxy iba primero. La extensión no tapa nada por sí misma: se lo pide al servicio del PC, así las reglas, la bóveda y la IA local son las mismas en todas partes |
 | (no estaba) | Modo proxy con control de acciones y del flujo de datos | Los agentes con herramientas convierten el prompt injection en acciones reales (mandar correos, ejecutar comandos). Era el riesgo más importante que el plan no cubría |
+| (no estaba) | Funciones para quien no sabe de informática: mejorar la pregunta, ¿es una estafa? y el juego | El análisis de mercado mostró que las herramientas parecidas son para empresas y técnicos. La persona normal pregunta mal a la IA y le llegan estafas que la IA podría ayudar a ver, así que el Guardián también tenía que servirle a ella |
 | (no estaba) | Instalador de Windows y `guardian doctor` | Al probarlo en mi portátil, Streamlit se instalaba a medias por la ruta larga de la carpeta (Windows corta a 260 caracteres). El instalador lo evita y el médico lo detecta |
 
 ## Hitos que quedan

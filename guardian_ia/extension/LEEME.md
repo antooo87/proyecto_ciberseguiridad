@@ -9,6 +9,12 @@ Mistral, Perplexity, Qwen y Grok) sin cambiar nada de cómo usas la web:
    Se envía al volver a pulsar.
 3. **Cuando la IA contesta**, la respuesta se revisa en tu PC (comandos peligrosos, enlaces falsos...) y en el panel
    lateral de la extensión la ves con tus datos reales. La web del chatbot nunca ve esos datos.
+4. **«✨ Mejorar»** (botón encima del cuadro del chat, o `Alt+M`): te dice qué le falta a tu pregunta y te propone dos
+   versiones más claras, Directa y Completa. Al elegir una, sustituye lo que habías escrito y deja seleccionado el
+   hueco «escribe aquí...» para que escribas encima. Tus datos se tapan antes de nada.
+5. **«Guardián: ¿es una estafa?»**: selecciona cualquier texto en cualquier web (un correo en Gmail, un WhatsApp
+   Web, un SMS copiado...) y, con el clic derecho, el panel lateral te dice si tiene las pistas de una estafa, cuál
+   parece y qué hacer.
 
 La extensión no tapa nada por sí misma: se lo pide al Guardián de tu PC (`python -m guardian servicio`), que es donde
 están las reglas, la bóveda y la IA local. Así tus datos no salen del ordenador.
@@ -36,7 +42,7 @@ En el panel lateral, «Esta semana» resume lo que ha hecho el Guardián (sin en
   el `Host` (contra el *DNS rebinding*) y pide una clave en cada petición.
 - La clave solo la tiene el trabajador de fondo de la extensión. Las webs de los chatbots nunca la ven.
 - Tus datos reales solo se enseñan en el panel lateral, que es de la extensión: la web del chatbot no lo puede leer.
-  Los avisos que salen en la página van dentro de un *shadow root* cerrado y se escriben siempre como texto.
+  Los avisos y las propuestas de «✨ Mejorar» van dentro de un *shadow root* cerrado y se escriben siempre como texto.
 - Si el servicio está apagado y el texto parece llevar datos, no se pega ni se envía (se puede cambiar en opciones).
   Para decidirlo sin el servicio hay un primer filtro en el navegador (`comun.js`) que comprueba la letra del DNI,
   el control del IBAN y el algoritmo de Luhn de las tarjetas.
