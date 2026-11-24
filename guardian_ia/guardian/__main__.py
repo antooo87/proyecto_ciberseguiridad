@@ -8,6 +8,8 @@ Uso (desde la carpeta del proyecto, con el entorno virtual activado):
                                               contraseñas escritas a mano y ataques en documentos
     python -m guardian proteger "texto"       enseña qué vería la IA (no necesita Ollama)
     python -m guardian mejorar "pregunta"     te propone dos versiones mejores de tu pregunta para un chatbot
+    python -m guardian estafa "mensaje"       ¿es una estafa este SMS, correo o WhatsApp? Y qué hacer
+    python -m guardian aprende                juego: ¿lo detectas? Aprende a ver las estafas antes de picar
     python -m guardian aduana documento.pdf   revisa un documento (texto, Word, PowerPoint, Excel o PDF) en busca de
                                               prompt injection
     python -m guardian verificar "respuesta"  revisa una respuesta de cualquier IA (ChatGPT, Gemini...)
@@ -128,6 +130,12 @@ def cmd_mejorar(args):
     print(f"{NEGRITA}Nota de tu pregunta: {color}{mejora.nota}/100{FIN}")
     for aviso in mejora.avisos:
         print(f"{AMARILLO}! {aviso}{FIN}")
+    if mejora.urgente:
+        print(f"{NEGRITA}{ROJO}🚑 No esperes a la respuesta de la IA:{FIN}")
+        for paso in mejora.urgente:
+            print(f"  {ROJO}!{FIN} {paso}")
+    if mejora.estafa:
+        print(f"{ROJO}🚨 {mejora.estafa}{FIN}")
     if mejora.consejos:
         print(f"{NEGRITA}Qué le falta:{FIN}")
         for consejo in mejora.consejos:
@@ -138,6 +146,72 @@ def cmd_mejorar(args):
     hechas = ("reescritas por la IA de tu PC" if mejora.con_ia else
               "hechas con reglas; añade --ia para que las reescriba la IA de tu PC")
     print(f"\n{GRIS}Copia la que más te guste y pégala en tu chatbot ({hechas}).{FIN}")
+    return 0
+
+
+def cmd_estafa(args):
+    from .estafas import analizar
+    if args.archivo:
+        lectura = _leer(args.archivo)
+        if lectura is None:
+            return 1
+        texto = lectura.texto
+    else:
+        texto = args.texto if args.texto else sys.stdin.read()
+    if not texto.strip():
+        print(f'{AMARILLO}Pega el mensaje: python -m guardian estafa "Correos: su paquete está retenido..."{FIN}')
+        return 1
+    informe = analizar(texto)
+    if args.json:
+        print(json.dumps(informe.a_dict(), ensure_ascii=False, indent=2))
+        return 0
+    color = {"ALTO": ROJO, "MEDIO": AMARILLO, "BAJO": VERDE}[informe.nivel]
+    print(f"{NEGRITA}{color}{informe.veredicto}{FIN} {GRIS}(puntuación {informe.puntuacion}){FIN}")
+    if informe.tipo:
+        print(f"{NEGRITA}Parece: {informe.tipo}{FIN}")
+    if informe.senales:
+        print(f"\n{NEGRITA}Las pistas (para que aprendas a verlas):{FIN}")
+        for senal in informe.senales:
+            print(f"  {color}●{FIN} {senal.explicacion}")
+            print(f"    {GRIS}«{senal.fragmento[:120]}»{FIN}")
+    if informe.si_ya_lo_hiciste:
+        print(f"\n{NEGRITA}{ROJO}Si ya lo has hecho, ahora mismo:{FIN}")
+        for paso in informe.si_ya_lo_hiciste:
+            print(f"  ! {paso}")
+    print(f"\n{NEGRITA}Qué hacer:{FIN}")
+    for paso in informe.que_hacer:
+        print(f"  • {paso}")
+    return 2 if informe.nivel == "ALTO" else 0
+
+
+def cmd_aprende(args):
+    from .escuela import corregir, mezclados
+    mensajes = mezclados(args.cuantos)
+    print(f"{NEGRITA}🎓 ¿Lo detectas?{FIN} Te enseño {len(mensajes)} mensajes. Para cada uno, escribe "
+          f"{NEGRITA}e{FIN} si crees que es una estafa o {NEGRITA}f{FIN} si es de fiar (q para salir).\n")
+    aciertos = respondidas = 0
+    for n, mensaje in enumerate(mensajes, 1):
+        print(f"{NEGRITA}{AZUL}{n}/{len(mensajes)} · {mensaje.canal} de {mensaje.remitente}{FIN}")
+        print(f"  {mensaje.texto}\n")
+        respuesta = ""
+        while respuesta not in ("e", "f", "q"):
+            try:
+                respuesta = input("¿Estafa (e) o de fiar (f)? ").strip().lower()[:1]
+            except EOFError:
+                respuesta = "q"
+        if respuesta == "q":
+            break
+        acierto, informe = corregir(mensaje, respuesta == "e")
+        aciertos += acierto
+        respondidas += 1
+        verdad = "ERA UNA ESTAFA" if mensaje.es_estafa else "ERA DE FIAR"
+        print(f"{VERDE + '✓ ¡Bien!' if acierto else ROJO + '✗ Esta vez no.'}{FIN} {NEGRITA}{verdad}{FIN}. "
+              f"{mensaje.leccion}")
+        for senal in informe.senales[:4]:
+            print(f"  {GRIS}● {senal.explicacion}{FIN}")
+        print()
+    print(f"{NEGRITA}Has acertado {aciertos} de {respondidas}.{FIN} Si dudas con un mensaje de verdad: "
+          f'python -m guardian estafa "el mensaje"')
     return 0
 
 
@@ -585,6 +659,16 @@ def main(argv=None):
     s.add_argument("--modelo-detector", default=None)
     s.add_argument("--json", action="store_true", help="sacar el resultado en JSON")
     s.set_defaults(func=cmd_mejorar)
+
+    s = sub.add_parser("estafa", help="¿es una estafa este SMS, correo o WhatsApp? Las pistas y qué hacer")
+    s.add_argument("texto", nargs="?", help="el mensaje (si no lo pones, se lee de la entrada)")
+    s.add_argument("--archivo", help="leer el mensaje de un archivo (.eml, .txt, .html, Word, PDF...)")
+    s.add_argument("--json", action="store_true", help="sacar el resultado en JSON")
+    s.set_defaults(func=cmd_estafa)
+
+    s = sub.add_parser("aprende", help="juego: ¿lo detectas? Aprende a ver las estafas antes de picar")
+    s.add_argument("--cuantos", type=int, default=6, help="cuántos mensajes (por defecto 6; 0 = todos)")
+    s.set_defaults(func=cmd_aprende)
 
     s = sub.add_parser("aduana", help="revisa un documento (texto, Word, PowerPoint, Excel o PDF) contra prompt injection")
     s.add_argument("archivo")

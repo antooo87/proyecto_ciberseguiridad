@@ -502,6 +502,8 @@ TARJETAS = [
     ("aduana", "🛃", "¿Este documento tiene trampa?", "Word, PDF, PowerPoint, Excel o una web: órdenes escondidas."),
     ("carpeta", "📁", "¿Puedo subir esta carpeta?", "Qué archivos llevan datos o trampas, y copias anonimizadas."),
     ("revisar", "🩺", "Revisar la IA de mi PC", "Extensiones, conectores, modelos y claves: qué es peligroso."),
+    ("estafa", "🚨", "¿Es una estafa?", "Pega un SMS, un correo o un WhatsApp: las pistas y qué hacer."),
+    ("aprende", "🎓", "¿Lo detectas?", "Un juego para aprender a ver las estafas antes de picar."),
     ("actividad", "📈", "Qué ha hecho por mí", "Lo que ha tapado y parado estos días, sin guardar tus datos."),
 ]
 
@@ -518,8 +520,8 @@ def pagina_inicio():
     c3.metric("Respuestas peligrosas", semana.respuestas["PELIGRO"])
     c4.metric("Preguntas mejoradas", semana.preguntas_mejoradas)
     st.markdown("#### ¿Qué quieres hacer?")
-    for fila in range(0, len(TARJETAS), 4):
-        for columna, (clave, icono, titulo, texto) in zip(st.columns(4), TARJETAS[fila:fila + 4], strict=False):
+    for fila in range(0, len(TARJETAS), 5):
+        for columna, (clave, icono, titulo, texto) in zip(st.columns(5), TARJETAS[fila:fila + 5], strict=False):
             with columna.container(border=True, height="stretch"):
                 st.markdown(f"**{icono} {titulo}**")
                 st.caption(texto)
@@ -578,6 +580,10 @@ def pagina_mejorar():
     with der:
         for aviso in mejora.avisos:
             st.warning(aviso)
+        if mejora.urgente:
+            st.error("**🚑 No esperes a la respuesta de la IA:**\n" + "\n".join(f"- {p}" for p in mejora.urgente))
+        if mejora.estafa:
+            st.error(f"🚨 {mejora.estafa}")
         consejos = list(mejora.consejos)
         if mejora.aduana and consejos:
             st.error(consejos.pop(0))
@@ -596,6 +602,85 @@ def pagina_mejorar():
                                       "de tu PC."))
 
 
+# ---------------- ¿Es una estafa? ----------------
+def texto_sin_enlaces(texto):
+    """Un mensaje sospechoso se enseña tal cual pero sin convertir sus enlaces en enlaces (que nadie pinche)."""
+    return ("<div style='white-space:pre-wrap;padding:12px 14px;border-radius:10px;border:1px solid rgba(127,127,127,.35);"
+            "font-size:15px;line-height:1.5'>" + html.escape(texto) + "</div>")
+
+
+def pagina_estafa():
+    from guardian.escuela import MENSAJES
+    from guardian.estafas import analizar as analizar_estafa
+    st.subheader("🚨 ¿Es una estafa?")
+    st.caption("Pega un SMS, un correo o un WhatsApp que te dé mala espina. Te digo si tiene las pistas de una estafa, "
+               "te las explico para que aprendas a verlas y te digo qué hacer, también si ya has picado. Todo en tu "
+               "PC y sin IA. En el navegador: selecciona el texto, clic derecho → «Guardián: ¿es una estafa?».")
+    ejemplos = {f"{n}. {m.canal} de {m.remitente}": m.texto for n, m in enumerate(MENSAJES, 1)}
+    ejemplo = st.selectbox("Ejemplos (inventados, copiados de los engaños que más circulan)", list(ejemplos))
+    texto = st.text_area("El mensaje", ejemplos[ejemplo], height=150, key=f"estafa_{ejemplo}")
+    if not st.button("Analizar", type="primary") or not texto.strip():
+        return
+    informe = analizar_estafa(texto)
+    aviso = {"ALTO": st.error, "MEDIO": st.warning, "BAJO": st.success}[informe.nivel]
+    aviso(f"**{informe.veredicto}**" + (f" · parece: **{informe.tipo}**" if informe.tipo else "")
+          + f" (puntuación {informe.puntuacion})")
+    if informe.si_ya_lo_hiciste:
+        st.error("**🚑 Si ya lo has hecho, ahora mismo:**\n" + "\n".join(f"- {p}" for p in informe.si_ya_lo_hiciste))
+    izq, der = st.columns(2)
+    with izq:
+        st.markdown("**Las pistas** (para que aprendas a verlas)")
+        if not informe.senales:
+            st.caption("No he visto ninguna de las pistas típicas.")
+        for senal in informe.senales:
+            st.markdown(f"- {senal.explicacion}")
+            st.caption(f"«{senal.fragmento[:140]}»")
+    with der:
+        st.markdown("**Qué hacer**")
+        st.markdown("\n".join(f"- {p}" for p in informe.que_hacer))
+
+
+# ---------------- ¿Lo detectas? ----------------
+def pagina_aprende():
+    from guardian.escuela import MENSAJES, corregir, mezclados
+    st.subheader("🎓 ¿Lo detectas? Aprende a ver las estafas antes de picar")
+    st.caption("Mensajes inventados pero copiados de los engaños que más circulan en España. Decide si es una estafa o "
+               "es de fiar y te explico las pistas. Hay mensajes legítimos a propósito: no se trata de desconfiar de todo.")
+    reiniciar = st.button("Empezar de nuevo")
+    if "juego" not in st.session_state or reiniciar:
+        st.session_state.juego = {"orden": [MENSAJES.index(m) for m in mezclados()], "n": 0, "aciertos": 0,
+                                  "respuesta": None}
+    juego = st.session_state.juego
+    total = len(juego["orden"])
+    if juego["n"] >= total:
+        st.success(f"**Has acertado {juego['aciertos']} de {total}.** Si un mensaje de verdad te da dudas, pégalo en "
+                   "«¿Es una estafa?».")
+        return
+    mensaje = MENSAJES[juego["orden"][juego["n"]]]
+    st.progress(juego["n"] / total, text=f"Mensaje {juego['n'] + 1} de {total} · aciertos: {juego['aciertos']}")
+    st.caption(f"{mensaje.canal} · de {mensaje.remitente}")
+    st.markdown(texto_sin_enlaces(mensaje.texto), unsafe_allow_html=True)
+    if juego["respuesta"] is None:
+        c1, c2 = st.columns(2)
+        if c1.button("🚨 Es una estafa", width="stretch"):
+            juego["respuesta"] = True
+            st.rerun()
+        if c2.button("✅ Es de fiar", width="stretch"):
+            juego["respuesta"] = False
+            st.rerun()
+        return
+    acierto, informe = corregir(mensaje, juego["respuesta"])
+    verdad = "Era una estafa" if mensaje.es_estafa else "Era de fiar"
+    (st.success if acierto else st.error)(f"**{'¡Bien!' if acierto else 'Esta vez no.'} {verdad}.** {mensaje.leccion}")
+    if informe.senales:
+        st.markdown("**Las pistas que ha visto el Guardián:**\n" + "\n".join(f"- {s.explicacion}" for s in informe.senales))
+    if st.button("Siguiente ➡️", type="primary"):
+        juego["aciertos"] += acierto
+        juego["n"] += 1
+        juego["respuesta"] = None
+        st.rerun()
+
+
 # ---------------- Navegación ----------------
 PAGINAS = {
     "inicio": st.Page(pagina_inicio, title="Inicio", icon="🏠", default=True),
@@ -606,6 +691,8 @@ PAGINAS = {
     "aduana": st.Page(pagina_aduana, title="Aduana de documentos", icon="🛃", url_path="aduana"),
     "carpeta": st.Page(pagina_carpeta, title="Revisar una carpeta", icon="📁", url_path="carpeta"),
     "revisar": st.Page(pagina_revisar, title="Revisar mi PC", icon="🩺", url_path="revisar"),
+    "estafa": st.Page(pagina_estafa, title="¿Es una estafa?", icon="🚨", url_path="estafa"),
+    "aprende": st.Page(pagina_aprende, title="¿Lo detectas? (juego)", icon="🎓", url_path="aprende"),
     "actividad": st.Page(pagina_actividad, title="Actividad", icon="📈", url_path="actividad"),
     "resultados": st.Page(pagina_resultados, title="Resultados (evaluación)", icon="📊", url_path="resultados"),
 }
@@ -613,6 +700,7 @@ navegacion = st.navigation({
     "Guardián IA": [PAGINAS["inicio"]],
     "Antes de preguntar": [PAGINAS["escudo"], PAGINAS["mejorar"], PAGINAS["chat"]],
     "Lo que le das o te da la IA": [PAGINAS["aduana"], PAGINAS["carpeta"], PAGINAS["verificar"]],
+    "Estafas": [PAGINAS["estafa"], PAGINAS["aprende"]],
     "Tu PC": [PAGINAS["revisar"], PAGINAS["actividad"], PAGINAS["resultados"]],
 })
 if (destino := st.session_state.pop("ir_a", None)) in PAGINAS:  # para ir a una página desde código (y en los tests)

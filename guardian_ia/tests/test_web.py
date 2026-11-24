@@ -27,6 +27,7 @@ def test_la_portada_se_carga_sin_errores():
     ("escudo", "vería la IA"), ("mejorar", "Mejorar mi pregunta"), ("chat", "sin darle tus datos"),
     ("verificar", "fiar de esta respuesta"), ("aduana", "esconde órdenes"), ("carpeta", "darle estos documentos"),
     ("revisar", "médico"), ("actividad", "ha hecho el Guardián"), ("resultados", "evaluación"),
+    ("estafa", "¿Es una estafa?"), ("aprende", "¿Lo detectas?"),
 ])
 def test_cada_pagina_se_carga_sin_errores(pagina, titulo):
     web = abrir(pagina)
@@ -73,3 +74,21 @@ def test_la_configuracion_de_la_web_no_sale_del_pc():
     import tomllib
     ajustes = tomllib.loads((WEB.parent / ".streamlit" / "config.toml").read_text(encoding="utf-8"))
     assert ajustes["server"]["address"] == "127.0.0.1" and ajustes["browser"]["gatherUsageStats"] is False
+
+
+def test_es_una_estafa_en_la_web():
+    web = abrir("estafa")
+    next(b for b in web.button if b.label == "Analizar").click().run()
+    assert not web.exception
+    assert any("Casi seguro que es una estafa" in e.value and "paquetería" in e.value for e in web.error)
+
+
+def test_el_juego_cuenta_los_aciertos():
+    web = abrir("aprende")
+    juego = web.session_state["juego"]
+    from guardian.escuela import MENSAJES
+    es_estafa = MENSAJES[juego["orden"][0]].es_estafa
+    next(b for b in web.button if b.label == ("🚨 Es una estafa" if es_estafa else "✅ Es de fiar")).click().run()
+    next(b for b in web.button if b.label == "Siguiente ➡️").click().run()
+    assert not web.exception
+    assert web.session_state["juego"]["n"] == 1 and web.session_state["juego"]["aciertos"] == 1

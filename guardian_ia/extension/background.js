@@ -61,10 +61,27 @@ async function guardarRespuesta(tabId, origen, texto) {
   return ultima;
 }
 
+// ¿Es una estafa? El resultado (pistas y qué hacer, sin tus datos) se enseña en el panel
+async function guardarEstafa(tabId, texto) {
+  try {
+    const r = await llamar("/v1/guardian/estafa", { texto: String(texto || "").slice(0, 20000) });
+    await chrome.storage.session.set({ [`estafa_${tabId}`]: { ...r, hora: Date.now() } });
+    return r;
+  } catch (e) {
+    await chrome.storage.session.set({ [`estafa_${tabId}`]: { error: String(e.message || e), hora: Date.now() } });
+    throw e;
+  }
+}
+
 chrome.runtime.onInstalled.addListener(async (detalles) => {
   chrome.contextMenus.create({
     id: "ver-con-mis-datos",
     title: "Guardián: ver con mis datos",
+    contexts: ["selection"],
+  });
+  chrome.contextMenus.create({
+    id: "es-estafa",
+    title: "Guardián: ¿es una estafa?",
     contexts: ["selection"],
   });
   await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
@@ -77,7 +94,13 @@ chrome.runtime.onStartup.addListener(() => {
 
 // Clic derecho sobre un texto seleccionado (cualquier web): se ve con tus datos en el panel
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId !== "ver-con-mis-datos" || !tab) return;
+  if (!tab) return;
+  if (info.menuItemId === "es-estafa") { // cualquier web: un correo en Gmail, un mensaje en WhatsApp Web...
+    chrome.sidePanel.open({ tabId: tab.id }).catch(() => {}); // tiene que ir antes de cualquier espera
+    guardarEstafa(tab.id, info.selectionText).catch(() => {});
+    return;
+  }
+  if (info.menuItemId !== "ver-con-mis-datos") return;
   chrome.sidePanel.open({ tabId: tab.id }).catch(() => {}); // tiene que ir antes de cualquier espera
   guardarRespuesta(tab.id, "texto seleccionado", info.selectionText || "").catch(async (e) => {
     await chrome.storage.session.set({ [`ultima_${tab.id}`]: { error: String(e.message || e), hora: Date.now() } });
@@ -85,7 +108,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
-  chrome.storage.session.remove([`cuenta_${tabId}`, `ultima_${tabId}`]);
+  chrome.storage.session.remove([`cuenta_${tabId}`, `ultima_${tabId}`, `estafa_${tabId}`]);
 });
 
 chrome.runtime.onMessage.addListener((mensaje, remitente, responder) => {
@@ -110,6 +133,7 @@ chrome.runtime.onMessage.addListener((mensaje, remitente, responder) => {
     },
     respuesta: () => guardarRespuesta(tabId, mensaje.origen || "respuesta de la IA", String(mensaje.texto || "")),
     restaurar: () => llamar("/v1/guardian/restaurar", { texto: String(mensaje.texto || "") }),
+    estafa: () => guardarEstafa(tabId, mensaje.texto),
     // Dos versiones mejores de tu pregunta, ya con tus datos tapados (con la misma bóveda que el resto del chat)
     mejorar: () => llamar("/v1/guardian/mejorar", { texto: String(mensaje.texto || "").slice(0, 20000) }),
     nueva: async () => {

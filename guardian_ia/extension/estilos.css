@@ -72,3 +72,7 @@ ul.lista li { margin: 3px 0; }
 .version .caja { max-height: 180px; margin-top: 6px; font-size: 13px; }
 kbd { font: 12px ui-monospace, monospace; border: 1px solid var(--borde); border-bottom-width: 2px; border-radius: 4px;
   padding: 0 4px; background: var(--fondo-suave); }
+.estado.ALTO { border-color: var(--rojo); color: var(--rojo); font-weight: 600; }
+.estado.MEDIO { border-color: var(--amarillo); color: var(--amarillo); font-weight: 600; }
+.estado.BAJO { border-color: var(--verde); color: var(--verde); font-weight: 600; }
+.urgente { border-color: var(--rojo); margin-top: 8px; }

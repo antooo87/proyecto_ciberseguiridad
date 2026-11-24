@@ -94,6 +94,33 @@ function pintar(ultima) {
   $("texto").textContent = ultima.texto;
 }
 
+// «¿Es una estafa?» (clic derecho sobre un texto, o el botón de «a mano»)
+function pintarEstafa(r) {
+  if (!r) {
+    $("estafa").classList.add("oculto");
+    return;
+  }
+  $("estafa").classList.remove("oculto");
+  const veredicto = $("estafa-veredicto");
+  const lista = (id, cosas) => $(id).replaceChildren(...(cosas || []).map((c) => elemento("li", "", c)));
+  if (r.error) {
+    veredicto.className = "estado MEDIO";
+    veredicto.textContent = r.error;
+    $("estafa-auxilio").classList.add("oculto");
+    lista("estafa-pistas", []);
+    lista("estafa-pasos", []);
+    return;
+  }
+  veredicto.className = `estado ${r.nivel}`;
+  veredicto.textContent = `${r.veredicto}${r.tipo ? ` · ${r.tipo}` : ""}`;
+  const auxilio = r.si_ya_lo_hiciste || [];
+  $("estafa-auxilio").classList.toggle("oculto", !auxilio.length);
+  $("estafa-auxilio").textContent = auxilio.length ? `🚑 Si ya lo has hecho, ahora mismo: ${auxilio.join(" ")}` : "";
+  lista("estafa-pistas", (r.senales || []).map((p) => `${p.explicacion} («${String(p.fragmento).slice(0, 90)}»)`));
+  if (!(r.senales || []).length) lista("estafa-pistas", ["Ninguna de las pistas típicas."]);
+  lista("estafa-pasos", r.que_hacer);
+}
+
 async function mostrarDeLaPestana() {
   if (enPestana) {
     // Abierto en su propia pestaña: se enseña la respuesta más reciente de cualquier pestaña
@@ -101,12 +128,17 @@ async function mostrarDeLaPestana() {
     const ultimas = Object.entries(todo).filter(([k]) => k.startsWith("ultima_")).map(([, v]) => v);
     ultimas.sort((a, b) => (b.hora || 0) - (a.hora || 0));
     pintar(ultimas[0]);
+    const estafas = Object.entries(todo).filter(([k]) => k.startsWith("estafa_")).map(([, v]) => v);
+    estafas.sort((a, b) => (b.hora || 0) - (a.hora || 0));
+    pintarEstafa(estafas[0]);
     return;
   }
   const pestana = await pestanaActiva();
   if (!pestana) return;
-  const clave = `ultima_${pestana.id}`;
-  pintar((await chrome.storage.session.get(clave))[clave]);
+  const claves = [`ultima_${pestana.id}`, `estafa_${pestana.id}`];
+  const guardado = await chrome.storage.session.get(claves);
+  pintar(guardado[claves[0]]);
+  pintarEstafa(guardado[claves[1]]);
 }
 
 // En las webs de chatbots contesta el script de la página; la página de prueba es de la propia extensión
@@ -196,6 +228,15 @@ $("mejorar").addEventListener("click", async () => {
   caja.replaceChildren(...partes);
 });
 
+$("analizar-estafa").addEventListener("click", async () => {
+  $("salida").classList.add("oculto");
+  $("mejoras").classList.add("oculto");
+  const pestana = enPestana ? null : await pestanaActiva();
+  const r = await pedir({ tipo: "estafa", texto: $("entrada").value, tabId: pestana ? pestana.id : -1 });
+  pintarEstafa(r.ok ? r : { error: r.error });
+  $("estafa").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
 $("nueva").addEventListener("click", async () => {
   const r = await pedir({ tipo: "nueva" });
   $("estado-texto").textContent = r.ok ? "Bóveda vaciada: los marcadores anteriores ya no se pueden restaurar." : r.error;
@@ -206,7 +247,9 @@ $("abrir-opciones").addEventListener("click", () => chrome.runtime.openOptionsPa
 $("abrir-prueba").addEventListener("click", () => chrome.tabs.create({ url: URL_PRUEBA }));
 
 chrome.storage.onChanged.addListener((cambios, zona) => {
-  if (zona === "session" && Object.keys(cambios).some((k) => k.startsWith("ultima_"))) mostrarDeLaPestana();
+  if (zona === "session" && Object.keys(cambios).some((k) => k.startsWith("ultima_") || k.startsWith("estafa_"))) {
+    mostrarDeLaPestana();
+  }
 });
 chrome.tabs.onActivated.addListener(mostrarDeLaPestana);
 

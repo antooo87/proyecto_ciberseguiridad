@@ -30,6 +30,7 @@ from typing import Optional
 from .aduana import Aduana
 from .escudo import Boveda, Escudo
 from .escudo.escudo import MARCADOR
+from .estafas import analizar as analizar_estafa
 from .ia import ErrorIA
 from .tipos import contar
 
@@ -148,6 +149,8 @@ class Mejora:
     datos_tapados: dict[str, int] = field(default_factory=dict)
     aduana: Optional[str] = None  # nivel de riesgo si el texto parece llevar una orden escondida
     avisos: list[str] = field(default_factory=list)
+    urgente: list[str] = field(default_factory=list)  # primeros auxilios si cuentas que te han engañado
+    estafa: Optional[str] = None  # aviso si lo que pegas se parece a una estafa conocida
 
     def a_dict(self) -> dict:
         datos = asdict(self)
@@ -411,6 +414,11 @@ class Mejorador:
         if mejora.datos_tapados:
             mejora.consejos.insert(0, f"He tapado {contar(mejora.datos_tapados)}: la IA no necesita tus datos "
                                       "reales para ayudarte.")
+        estafa = analizar_estafa(texto)  # ¿cuentas que te han engañado o pegas un mensaje con trampa?
+        mejora.urgente = estafa.si_ya_lo_hiciste
+        if estafa.nivel == "ALTO":
+            mejora.estafa = (f"Lo que has pegado se parece a una estafa conocida: {(estafa.tipo or 'estafa').lower()}. "
+                             f"{estafa.que_hacer[0]}")
         informe = self.aduana.analizar(texto)
         if informe.nivel in ("MEDIO", "ALTO"):
             mejora.aduana = informe.nivel

@@ -10,6 +10,7 @@ a este pequeño servidor que corre en tu PC:
     POST /v1/guardian/restaurar  {"texto": ...}  -> vuelve a poner tus datos (nunca dentro de enlaces)
                                                     y revisa la respuesta con el verificador
     POST /v1/guardian/mejorar    {"texto": ...}  -> dos versiones mejores de tu pregunta (ya con los datos tapados)
+    POST /v1/guardian/estafa     {"texto": ...}  -> ¿es una estafa este mensaje? Pistas y qué hacer
     POST /v1/guardian/nueva                      -> vacía la bóveda
     GET  /v1/guardian/actividad                  -> lo que ha hecho esta semana (del registro, sin datos)
     GET  /salud                                  -> ¿está encendido?
@@ -40,6 +41,7 @@ from . import __version__
 from .actividad import leer_registro
 from .aduana import Aduana
 from .escudo import Boveda, Escudo
+from .estafas import analizar as analizar_estafa
 from .mejorador import Mejorador
 from .registro import Registro
 from .terminal import resumen
@@ -125,6 +127,12 @@ class ServicioGuardian:
         mejora = self.mejorador.mejorar(texto, self.boveda, self._cerrojo)
         self.registro.apuntar("extension_mejorar", nota=mejora.nota, con_ia=mejora.con_ia)
         return mejora.a_dict()
+
+    def estafa(self, texto: str) -> dict:
+        """¿Es una estafa? (el texto que seleccionas en cualquier web, por ejemplo un correo en Gmail)."""
+        informe = analizar_estafa(texto)
+        self.registro.apuntar("extension_estafa", nivel_estafa=informe.nivel, tipo_estafa=informe.tipo)
+        return informe.a_dict()
 
     def nueva(self) -> dict:
         with self._cerrojo:
@@ -232,6 +240,9 @@ class _Manejador(BaseHTTPRequestHandler):
         elif ruta == "/v1/guardian/mejorar":
             respuesta = servicio.mejorar(texto)
             self._resumen = f"pregunta mejorada: nota {respuesta['nota']}/100"
+        elif ruta == "/v1/guardian/estafa":
+            respuesta = servicio.estafa(texto)
+            self._resumen = f"mensaje revisado: {respuesta['veredicto'].lower()}"
         elif ruta == "/v1/guardian/nueva":
             respuesta = servicio.nueva()
             self._resumen = "bóveda vaciada"

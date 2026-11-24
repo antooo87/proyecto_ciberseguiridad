@@ -21,7 +21,8 @@ from . import config
 from .terminal import resumen
 
 DONDE = {"pregunta": "Chat", "documento_bloqueado": "Chat", "extension_proteger": "Extensión",
-         "extension_restaurar": "Extensión", "extension_mejorar": "Extensión", "proxy": "Agentes"}
+         "extension_restaurar": "Extensión", "extension_mejorar": "Extensión", "extension_estafa": "Extensión",
+         "proxy": "Agentes"}
 NIVELES_RESPUESTA = ("OK", "AVISO", "PELIGRO")
 MAX_ULTIMOS = 25
 
@@ -76,6 +77,8 @@ class Actividad:
     acciones_bloqueadas: Counter = field(default_factory=Counter)  # herramienta del agente -> cuántas veces
     resultados_bloqueados: int = 0
     preguntas_mejoradas: int = 0
+    mensajes_revisados: int = 0  # «¿es una estafa?»
+    estafas: Counter = field(default_factory=Counter)  # tipo de estafa -> cuántas veces (nivel ALTO)
     notas: list = field(default_factory=list)  # nota (0-100) de cada pregunta antes de mejorarla
     por_dia: dict = field(default_factory=dict)  # "2026-11-23" -> {"datos": n, "alertas": n}
     ultimos: list = field(default_factory=list)  # lo último importante, lo más reciente primero
@@ -109,6 +112,7 @@ class Actividad:
             "acciones_bloqueadas": dict(self.acciones_bloqueadas.most_common()),
             "resultados_bloqueados": self.resultados_bloqueados, "alertas": self.alertas,
             "preguntas_mejoradas": self.preguntas_mejoradas,
+            "mensajes_revisados": self.mensajes_revisados, "estafas": dict(self.estafas.most_common()),
             "nota_media": round(sum(self.notas) / len(self.notas)) if self.notas else None,
             "por_dia": self.por_dia, "ultimos": self.ultimos,
         }
@@ -142,6 +146,8 @@ def _que_paso(suceso: dict, datos: Counter, avisos: Counter) -> list[str]:
         partes.append("acción bloqueada: " + ", ".join(sorted(set(acciones))))
     if _numero(suceso.get("resultados_bloqueados")):
         partes.append(f"{suceso['resultados_bloqueados']} resultado(s) de herramienta con trampa bloqueado(s)")
+    if evento == "extension_estafa" and suceso.get("nivel_estafa") == "ALTO":
+        partes.append(f"mensaje revisado: casi seguro una estafa ({str(suceso.get('tipo_estafa') or '?')[:80]})")
     nivel = suceso.get("verificacion")
     if nivel in ("AVISO", "PELIGRO"):
         detalles = [AVISOS.get(t, t) for t in avisos if t not in INFORMATIVOS]
@@ -204,6 +210,10 @@ def leer_registro(carpeta: Optional[str] = None, dias: Optional[int] = 30, hoy: 
             if isinstance(accion, str):
                 actividad.acciones_bloqueadas[accion] += 1
         actividad.resultados_bloqueados += _numero(suceso.get("resultados_bloqueados"))
+        if evento == "extension_estafa":
+            actividad.mensajes_revisados += 1
+            if suceso.get("nivel_estafa") == "ALTO":
+                actividad.estafas[str(suceso.get("tipo_estafa") or "estafa")[:80]] += 1
         if evento == "extension_mejorar":
             actividad.preguntas_mejoradas += 1
             nota = suceso.get("nota")
@@ -218,6 +228,7 @@ def leer_registro(carpeta: Optional[str] = None, dias: Optional[int] = 30, hoy: 
             actividad.ultimos.append({"fecha": fecha.isoformat(timespec="minutes"), "donde": DONDE[evento],
                                       "que": " · ".join(partes)[:300],
                                       "grave": suceso.get("verificacion") == "PELIGRO"
+                                      or suceso.get("nivel_estafa") == "ALTO"
                                       or evento == "documento_bloqueado" or bool(suceso.get("acciones_bloqueadas"))})
     actividad.ultimos = actividad.ultimos[::-1][:MAX_ULTIMOS]
     return actividad

@@ -240,6 +240,18 @@ function comprobar(cond, texto) {
   await panel.setViewportSize({ width: 420, height: 900 });
   await captura(panel, "ext_panel.png", { fullPage: true });
 
+  // «¿Es una estafa?» desde el panel (lo mismo que el clic derecho sobre un texto en cualquier web)
+  await panel.fill("#entrada", "Hola mamá, se me ha caído el móvil al váter y este es mi nuevo número. Guárdalo. " +
+    "¿Puedes hacerme un Bizum de 480 €? Es urgente, mañana te lo devuelvo.");
+  await panel.click("#analizar-estafa");
+  await panel.waitForFunction(() => document.getElementById("estafa-veredicto").textContent.length > 0, null,
+    { timeout: 5000 }).catch(() => {});
+  const veredicto = await panel.textContent("#estafa-veredicto");
+  console.log("estafa:", veredicto);
+  comprobar(veredicto.includes("Casi seguro que es una estafa") && veredicto.includes("hijo en apuros"),
+    "el panel reconoce la estafa del «hijo en apuros» y explica qué hacer");
+  await captura(panel, "ext_estafa.png", { fullPage: true });
+
   // Si el Guardián del PC se apaga, un texto con datos no pasa (falla "cerrado")
   servicio.kill();
   await page.waitForTimeout(500);

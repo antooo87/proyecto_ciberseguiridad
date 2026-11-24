@@ -281,10 +281,11 @@
       font:600 13px system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer}
     .usar:focus-visible,.boton:focus-visible,.cerrar:focus-visible{outline:2px solid #1f6feb;outline-offset:2px}
     .pie{margin-top:10px;font-size:12px;opacity:.75}
-    .error{background:#ffebe9;color:#82071e;border-radius:8px;padding:8px 10px}
+    .error,.urgente{background:#ffebe9;color:#82071e;border-radius:8px;padding:8px 10px;margin:6px 0}
+    .urgente ul{margin:4px 0 0}
     @media (prefers-color-scheme:dark){
       .caja{background:#161b22;color:#e6edf3;border-color:#3d444d}.opcion{border-color:#3d444d}
-      .ojo{background:#3b2e00;color:#f2cc60}.error{background:#3c0b0b;color:#ffa198}}`;
+      .ojo{background:#3b2e00;color:#f2cc60}.error,.urgente{background:#3c0b0b;color:#ffa198}}`;
 
   function nodo(etiqueta, clase, texto) {
     const n = document.createElement(etiqueta);
@@ -384,6 +385,16 @@
       caja.append(nodo("div", "error", r.error || "El Guardián de tu PC no responde."));
       return;
     }
+    const urgente = Array.isArray(r.urgente) ? r.urgente : [];
+    if (urgente.length) {
+      const auxilio = nodo("div", "urgente");
+      auxilio.append(nodo("b", "", "🚑 No esperes a la respuesta de la IA:"));
+      const pasos = nodo("ul");
+      for (const paso of urgente) pasos.append(nodo("li", "", String(paso)));
+      auxilio.append(pasos);
+      caja.append(auxilio);
+    }
+    if (r.estafa) caja.append(nodo("div", "urgente", `🚨 ${r.estafa}`));
     const consejos = Array.isArray(r.consejos) ? r.consejos : [];
     if (consejos.length) {
       caja.append(nodo("div", "sub", "Qué le falta a tu pregunta"));

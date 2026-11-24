@@ -21,9 +21,19 @@
   </div>
   <div class="fila"><button id="leer" class="principal">Leer la última respuesta de esta página</button></div>
 
+  <div id="estafa" class="oculto">
+    <h2>¿Es una estafa?</h2>
+    <div class="estado" id="estafa-veredicto"></div>
+    <div class="caja urgente oculto" id="estafa-auxilio"></div>
+    <p class="pequeno"><b>Las pistas</b> (para que aprendas a verlas)</p>
+    <ul id="estafa-pistas" class="pequeno lista"></ul>
+    <p class="pequeno"><b>Qué hacer</b></p>
+    <ul id="estafa-pasos" class="pequeno lista"></ul>
+  </div>
+
   <h2>Proteger o mejorar un texto a mano</h2>
   <textarea id="entrada" rows="4" placeholder="Pega aquí un texto con datos personales, o escribe tu pregunta para la IA"></textarea>
-  <div class="fila"><button id="proteger">Tapar y copiar</button><button id="mejorar">✨ Mejorar mi pregunta</button></div>
+  <div class="fila"><button id="proteger">Tapar y copiar</button><button id="mejorar">✨ Mejorar mi pregunta</button><button id="analizar-estafa">🚨 ¿Es una estafa?</button></div>
   <div class="caja oculto" id="salida"></div>
   <div class="oculto" id="mejoras"></div>
 
